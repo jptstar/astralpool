@@ -1,4 +1,3 @@
-sed: --: No such file or directory
 # SmartNext for Home Assistant
 
 [![GitHub Release](https://img.shields.io/github/v/release/jptstar/astralpool_smartnext)](https://github.com/jptstar/astralpool_smartnext/releases)
@@ -7,7 +6,7 @@ sed: --: No such file or directory
 
 Custom Home Assistant integration for an **AstralPool Smart Next** pool controller over **Modbus TCP**.
 
-The register map in version 0.2.2 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
+The register map in version 0.2.3 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
 
 ## About this project
 
