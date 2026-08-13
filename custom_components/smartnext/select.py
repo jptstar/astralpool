@@ -53,4 +53,3 @@ class SmartNextPhInitializationSelect(SmartNextEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         await self.coordinator.api.async_set_ph_init_time(OPTIONS_TO_SECONDS[option])
         await self.coordinator.async_request_refresh()
-sed: --: No such file or directory

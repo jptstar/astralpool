@@ -1,4 +1,3 @@
-sed: --: No such file or directory
 """Constants for the SmartNext integration."""
 
 from __future__ import annotations

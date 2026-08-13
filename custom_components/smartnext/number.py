@@ -1,4 +1,3 @@
-sed: --: No such file or directory
 """Writable SmartNext settings."""
 
 from __future__ import annotations

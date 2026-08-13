@@ -23,4 +23,3 @@ class SmartNextEntity(CoordinatorEntity[SmartNextCoordinator]):
             name="SmartNext",
             configuration_url=f"http://{host}",
         )
-sed: --: No such file or directory

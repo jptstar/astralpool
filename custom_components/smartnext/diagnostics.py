@@ -1,4 +1,3 @@
-sed: --: No such file or directory
 """Diagnostics support for SmartNext."""
 
 from __future__ import annotations
