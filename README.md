@@ -1,3 +1,4 @@
+sed: --: No such file or directory
 # SmartNext for Home Assistant
 
 [![GitHub Release](https://img.shields.io/github/v/release/jptstar/astralpool_smartnext)](https://github.com/jptstar/astralpool_smartnext/releases)

@@ -1,0 +1,18 @@
+sed: --: No such file or directory
+{
+  "domain": "smartnext",
+  "name": "SmartNext",
+  "codeowners": [
+    "@jptstar"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/jptstar/astralpool_smartnext",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/jptstar/astralpool_smartnext/issues",
+  "requirements": [
+    "pymodbus==3.11.3"
+  ],
+  "version": "0.2.2"
+}

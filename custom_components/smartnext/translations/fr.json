@@ -1,0 +1,229 @@
+sed: --: No such file or directory
+{
+  "title": "SmartNext",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connexion au SmartNext",
+        "description": "Configure la connexion Modbus TCP.",
+        "data": {
+          "host": "Adresse IP / hôte",
+          "port": "Port TCP",
+          "unit_id": "Unit ID Modbus",
+          "timeout": "Timeout (s)",
+          "reconnect_delay": "Délai de reconnexion (s)",
+          "scan_interval": "Intervalle d'interrogation (s)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de se connecter au SmartNext. Vérifie l’adresse, le port et le Unit ID.",
+      "unknown": "Erreur inattendue."
+    },
+    "abort": {
+      "already_configured": "Cette connexion SmartNext est déjà configurée."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Paramètres de communication SmartNext",
+        "data": {
+          "unit_id": "Unit ID Modbus",
+          "timeout": "Timeout (s)",
+          "reconnect_delay": "Délai de reconnexion (s)",
+          "scan_interval": "Intervalle d'interrogation (s)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "temperature": {
+        "name": "Water temperature"
+      },
+      "temperature_min": {
+        "name": "Low temperature threshold"
+      },
+      "temperature_max": {
+        "name": "High temperature threshold"
+      },
+      "salt": {
+        "name": "Salt"
+      },
+      "salt_min": {
+        "name": "Low salt threshold"
+      },
+      "salt_max": {
+        "name": "High salt threshold"
+      },
+      "ph": {
+        "name": "pH"
+      },
+      "ph_dosage_elapsed": {
+        "name": "pH dosage elapsed time"
+      },
+      "ph_pump_output": {
+        "name": "pH pump output"
+      },
+      "ph_total_hours": {
+        "name": "pH dosing total hours"
+      },
+      "ph_partial_hours": {
+        "name": "pH dosing partial hours"
+      },
+      "orp": {
+        "name": "ORP"
+      },
+      "electrolysis_functional_target": {
+        "name": "Electrolysis functional target"
+      },
+      "electrolysis_production": {
+        "name": "Electrolysis production"
+      },
+      "electrolysis_current": {
+        "name": "Electrolysis current"
+      },
+      "electrolysis_voltage": {
+        "name": "Electrolysis voltage"
+      },
+      "electrolysis_chlorine_production": {
+        "name": "Chlorine production"
+      },
+      "electrolysis_total_hours": {
+        "name": "Electrolysis total hours"
+      },
+      "electrolysis_partial_hours": {
+        "name": "Electrolysis partial hours"
+      }
+    },
+    "binary_sensor": {
+      "general_alarm": {
+        "name": "General alarm"
+      },
+      "flow_alarm": {
+        "name": "Flow alarm"
+      },
+      "internal_flow_alarm": {
+        "name": "Internal flow / air bubble alarm"
+      },
+      "external_flow_switch_alarm": {
+        "name": "External flow switch alarm"
+      },
+      "electrolysis_check_cell_alarm": {
+        "name": "Check cell alarm"
+      },
+      "electrolysis_low_conductivity_alarm": {
+        "name": "Low conductivity alarm"
+      },
+      "electrolysis_high_conductivity_alarm": {
+        "name": "High conductivity alarm"
+      },
+      "ph_low_alarm": {
+        "name": "Low pH alarm"
+      },
+      "ph_high_alarm": {
+        "name": "High pH alarm"
+      },
+      "ph_pump_stop_alarm": {
+        "name": "pH pump-stop alarm"
+      },
+      "ph_fuse_alarm": {
+        "name": "pH fuse alarm"
+      },
+      "orp_low_alarm": {
+        "name": "Low ORP alarm"
+      },
+      "orp_high_alarm": {
+        "name": "High ORP alarm"
+      },
+      "temperature_low_alarm": {
+        "name": "Low temperature alarm"
+      },
+      "temperature_high_alarm": {
+        "name": "High temperature alarm"
+      },
+      "salt_low_alarm": {
+        "name": "Low salt alarm"
+      },
+      "salt_high_alarm": {
+        "name": "High salt alarm"
+      },
+      "ph_measure_unreliable": {
+        "name": "pH measurement unreliable"
+      },
+      "orp_measure_unreliable": {
+        "name": "ORP measurement unreliable"
+      },
+      "temperature_measure_unreliable": {
+        "name": "Temperature measurement unreliable"
+      },
+      "salt_measure_unreliable": {
+        "name": "Salt measurement unreliable"
+      },
+      "salt_current_insufficient": {
+        "name": "Salt measurement current insufficient"
+      },
+      "salt_voltage_insufficient": {
+        "name": "Salt measurement voltage insufficient"
+      },
+      "treatment_halted": {
+        "name": "Treatment halted"
+      },
+      "electrolysis_running": {
+        "name": "Electrolysis running"
+      },
+      "electrolysis_reverse_polarity": {
+        "name": "Electrolysis reverse polarity"
+      },
+      "cover_input": {
+        "name": "Cover input"
+      },
+      "cover_active": {
+        "name": "Cover active"
+      },
+      "ph_initializing": {
+        "name": "pH initializing"
+      },
+      "ph_dosing_active": {
+        "name": "pH dosing active"
+      },
+      "biopool_mode": {
+        "name": "Mode Biopool"
+      }
+    },
+    "number": {
+      "temperature_min_setpoint": {
+        "name": "Low temperature threshold"
+      },
+      "temperature_max_setpoint": {
+        "name": "High temperature threshold"
+      },
+      "ph_setpoint": {
+        "name": "pH setpoint"
+      },
+      "ph_dosage_limit": {
+        "name": "pH dosage time limit"
+      },
+      "orp_setpoint": {
+        "name": "ORP setpoint"
+      },
+      "electrolysis_normal_setpoint": {
+        "name": "Electrolysis normal production"
+      },
+      "electrolysis_cover_setpoint": {
+        "name": "Electrolysis cover production"
+      }
+    },
+    "select": {
+      "ph_initialization_time": {
+        "name": "pH initialization time"
+      }
+    },
+    "button": {
+      "reset_ph_pump_stop": {
+        "name": "Reset pH pump-stop"
+      }
+    }
+  }
+}
