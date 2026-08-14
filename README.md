@@ -6,7 +6,7 @@
 
 Custom Home Assistant integration for an **AstralPool Smart Next** pool controller over **Modbus TCP**.
 
-The register map in version 0.2.4 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
+The register map in version 0.2.5 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
 
 ## About this project
 
