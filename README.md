@@ -12,7 +12,7 @@ Custom Home Assistant integration for an **AstralPool Smart Next** pool controll
 
 > **Hardware required separately:** the Smart Next does not include an Ethernet/Modbus TCP interface. A compatible RS-485 **Modbus RTU-to-TCP converter must be purchased, powered, wired and configured separately**. The converter is not supplied with the Smart Next and is not part of this software integration.
 
-The register map in version 0.2.14 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
+The register map in version 0.2.15 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
 
 ## About this project
 
@@ -85,6 +85,8 @@ After setup, Unit ID, timeout, reconnect delay and polling interval can be chang
 | Electrolysis current | Input `0x43` | / 100 A |
 | Electrolysis voltage | Input `0x44` | / 100 V |
 | Chlorine production | Input `0x45` | g/h |
+| Rated electrolysis capacity | Holding `0x05` | g/h |
+| Boost time remaining | Holding `0x44` | HH/MM converted to minutes |
 
 ### Writable settings
 
@@ -98,6 +100,25 @@ After setup, Unit ID, timeout, reconnect delay and polling interval can be chang
 | ORP setpoint | `0x87` | mV |
 | Low temperature threshold | `0xB2` | x10 on write |
 | High temperature threshold | `0xB3` | x10 on write |
+
+### Additional controls in v0.2.15
+
+The integration also exposes the following documented controls as Home Assistant
+switches or selects:
+
+- electrolysis Boost mode;
+- cover input control;
+- internal ORP regulation and external chlorine regulation;
+- internal and external flow-sensor enable states;
+- intelligent pH dosing and pH PumpStop protection;
+- low/high temperature and salinity alarm enable states;
+- electrolysis polarity-reversal period: 2, 3, 4 or 7 hours.
+
+Each boolean setting is written through its dedicated Modbus coil. The integration
+does not perform read-modify-write operations on the complete control words.
+Only Boost is enabled as an entity by default. The other advanced configuration
+entities can be enabled from the SmartNext device page when they are needed; this
+reduces the risk of accidentally disabling a treatment or safety function.
 
 ### Standard / Biopool setpoint ranges
 
@@ -122,13 +143,21 @@ They are documented as **not editable via Modbus**, so the integration exposes t
 
 ### Alarm and status inputs
 
-The integration exposes the documented alarm groups for flow, electrolysis, pH, ORP, temperature and salt, plus measurement-quality states, electrolysis running/polarity, cover status and pH dosing status.
+The integration exposes the documented alarm groups for flow, electrolysis, pH,
+ORP, temperature and salt, plus measurement-quality states, raw internal/external
+flow states, electrolysis stop causes, electrolysis running/polarity, cover status
+and pH dosing status. Hardware version, firmware version and serial number are
+included in the Home Assistant device information.
 
 Important corrections from the verified table:
 
 - `0x242` is the external/inductive flow-switch alarm.
 - `0x250`, `0x251`, `0x252` are Check Cell, Low Conductivity and High Conductivity.
 - Coil `0x56D` rearms the pH pump-stop; it is not a global alarm-reset coil.
+
+Calibration commands, factory/configuration resets, communication settings,
+watchdog settings and test mode are intentionally not exposed. They are maintenance
+operations and an accidental write could disrupt treatment or communication.
 
 ## Installation with HACS
 
