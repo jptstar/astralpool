@@ -151,7 +151,7 @@ Keep the polling interval at `5 s` or higher when several TCP clients share the 
 
 ## Entity language
 
-Entity names are intentionally kept in **English**, including when Home Assistant itself is configured in French. Configuration-flow labels can still be localized.
+Entity names and the pH initialization choices are available in **English and French** and follow the language selected in Home Assistant. Existing user-defined entity names are never overwritten.
 
 ## Support and trademarks
 

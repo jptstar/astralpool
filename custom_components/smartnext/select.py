@@ -10,10 +10,10 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .entity import SmartNextEntity
 
 OPTIONS_TO_SECONDS = {
-    "Off": 0,
-    "60 s": 60,
-    "120 s": 120,
-    "240 s": 240,
+    "off": 0,
+    "seconds_60": 60,
+    "seconds_120": 120,
+    "seconds_240": 240,
 }
 SECONDS_TO_OPTIONS = {value: key for key, value in OPTIONS_TO_SECONDS.items()}
 

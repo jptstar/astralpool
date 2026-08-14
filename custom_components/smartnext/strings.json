@@ -216,7 +216,13 @@
     },
     "select": {
       "ph_initialization_time": {
-        "name": "pH initialization time"
+        "name": "pH initialization time",
+        "state": {
+          "off": "Off",
+          "seconds_60": "60 seconds",
+          "seconds_120": "120 seconds",
+          "seconds_240": "240 seconds"
+        }
       }
     },
     "button": {
