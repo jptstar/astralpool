@@ -12,7 +12,7 @@ Custom Home Assistant integration for an **AstralPool Smart Next** pool controll
 
 > **Hardware required separately:** the Smart Next does not include an Ethernet/Modbus TCP interface. A compatible RS-485 **Modbus RTU-to-TCP converter must be purchased, powered, wired and configured separately**. The converter is not supplied with the Smart Next and is not part of this software integration.
 
-The register map in version 0.2.12 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
+The register map in version 0.2.13 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
 
 ## About this project
 
