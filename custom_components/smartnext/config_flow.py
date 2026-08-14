@@ -5,9 +5,9 @@ from __future__ import annotations
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_TIMEOUT
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
 
 from .api import SmartNextApi, SmartNextCommunicationError
 from .const import (
@@ -77,7 +77,7 @@ class SmartNextConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    async def async_step_user(self, user_input=None) -> FlowResult:
+    async def async_step_user(self, user_input=None) -> ConfigFlowResult:
         """Handle initial setup."""
         errors: dict[str, str] = {}
 
@@ -121,7 +121,7 @@ class SmartNextOptionsFlow(config_entries.OptionsFlow):
     def __init__(self, config_entry) -> None:
         self._config_entry = config_entry
 
-    async def async_step_init(self, user_input=None) -> FlowResult:
+    async def async_step_init(self, user_input=None) -> ConfigFlowResult:
         """Manage SmartNext options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
