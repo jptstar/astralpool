@@ -10,11 +10,15 @@
 
 Custom Home Assistant integration for an **AstralPool Smart Next** pool controller connected through a **Modbus TCP-to-RTU gateway**.
 
-The register map in version 0.2.8 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
+The register map in version 0.2.9 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
 
 ## About this project
 
 I originally developed this integration for fun and for my own Home Assistant installation. I am sharing it so other Smart Next owners can benefit from local access to their controller. This remains a personal hobby project, so support and updates are provided on a best-effort basis.
+
+**Author:** Jean-Philippe TESTART ([@jptstar](https://github.com/jptstar))
+
+**License:** [MIT](LICENSE)
 
 ## Configuration
 
