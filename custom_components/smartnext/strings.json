@@ -4,11 +4,11 @@
     "step": {
       "user": {
         "title": "Connect to SmartNext",
-        "description": "Configure the Modbus TCP connection.",
+        "description": "Connect to the Smart Next through a Modbus TCP-to-RTU gateway (tested with Waveshare).",
         "data": {
-          "host": "IP address / host",
-          "port": "TCP port",
-          "unit_id": "Modbus Unit ID",
+          "host": "Gateway IP address / host",
+          "port": "Gateway TCP port",
+          "unit_id": "Smart Next Modbus Unit ID",
           "timeout": "Timeout (s)",
           "reconnect_delay": "Reconnect delay (s)",
           "scan_interval": "Polling interval (s)"
@@ -16,7 +16,7 @@
       }
     },
     "error": {
-      "cannot_connect": "Unable to connect to SmartNext. Check the address, port and Unit ID.",
+      "cannot_connect": "Unable to read Smart Next through the gateway. Check the gateway address/port, TCP-to-RTU mode, serial settings and Smart Next Unit ID.",
       "unknown": "Unexpected error."
     },
     "abort": {

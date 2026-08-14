@@ -4,9 +4,9 @@
 
 > **Unofficial project** — This independent community integration was created for fun and for my own Home Assistant installation. It is not developed, approved, endorsed, or maintained by AstralPool or Fluidra, and is not affiliated with either company. AstralPool, Fluidra, Smart Next, and their product names and trademarks remain the property of their respective owners. Support requests for this integration must be directed to its author through GitHub, not to AstralPool or Fluidra.
 
-Custom Home Assistant integration for an **AstralPool Smart Next** pool controller over **Modbus TCP**.
+Custom Home Assistant integration for an **AstralPool Smart Next** pool controller connected through a **Modbus TCP-to-RTU gateway**.
 
-The register map in version 0.2.6 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
+The register map in version 0.2.7 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
 
 ## About this project
 
@@ -14,11 +14,44 @@ I originally developed this integration for fun and for my own Home Assistant in
 
 ## Configuration
 
+### Connection architecture
+
+The Smart Next communicates over Modbus RTU / RS-485. Home Assistant connects to a network gateway using Modbus TCP; the gateway converts each request to Modbus RTU:
+
+`Home Assistant → Ethernet/Wi-Fi (Modbus TCP) → Waveshare gateway → RS-485 (Modbus RTU) → Smart Next`
+
+This integration has been tested with the [Waveshare RS485 to Wi-Fi/Ethernet gateway](https://www.amazon.fr/dp/B0BGHVRMPJ). Other transparent Modbus TCP-to-RTU gateways may work but are not tested.
+
+### Known-working Waveshare settings
+
+These values reproduce the author's working installation. Replace the network addresses with values appropriate for your LAN.
+
+| Section | Setting | Value |
+|---|---|---|
+| Network | Work Mode | `TCP Server` |
+| Network | Device Port | `502` |
+| Network | IP Mode | `Static` recommended |
+| Serial | Baud rate | `9600` |
+| Serial | Data bits | `8` |
+| Serial | Parity | `Even` |
+| Serial | Stop bits | `1` |
+| Serial | Flow control | `None` |
+| Multi-host | Protocol | `Modbus TCP to RTU` |
+| Multi-host | Enable Multi-host | `Yes` |
+| Multi-host | Instruction timeout | `224 ms` |
+| Multi-host | RS485 conflict time gap | `20 ms` |
+
+Wire the Smart Next RS-485 bus to the gateway (`A` to `A`, `B` to `B`; connect the reference/GND conductor when required by the installation). If communication fails completely, check the documentation and the terminal labels before considering an A/B swap. Do not expose TCP port 502 to the Internet.
+
+The gateway's **Destination IP/DNS** and **Destination Port** are not used by Home Assistant while the gateway is operating as a TCP server. In the integration, enter the gateway's **Device IP**, not the Smart Next address.
+
+### Home Assistant setup
+
 Configuration is done from the Home Assistant UI:
 
-- IP address / host
-- TCP port (default `502`)
-- Modbus Unit ID (default `2`)
+- gateway IP address / host
+- gateway TCP port (default `502`)
+- Smart Next Modbus Unit ID (default `2`)
 - timeout
 - reconnect delay
 - polling interval
@@ -98,11 +131,13 @@ Important corrections from the verified table:
 
 ## Default communication settings
 
-- Port: `502`
-- Unit ID: `2`
+- Gateway port: `502`
+- Smart Next Unit ID: `2`
 - Timeout: `5 s`
 - Reconnect delay: `10 s`
 - Polling interval: `5 s`
+
+Keep the polling interval at `5 s` or higher when several TCP clients share the RS-485 bus. The gateway serializes all requests onto the single RTU link; aggressive polling or simultaneous masters can cause timeouts and collisions.
 
 ## Entity language
 

@@ -4,11 +4,11 @@
     "step": {
       "user": {
         "title": "Connexion au SmartNext",
-        "description": "Configure la connexion Modbus TCP.",
+        "description": "Connecte le Smart Next via une passerelle Modbus TCP vers RTU (testé avec Waveshare).",
         "data": {
-          "host": "Adresse IP / hôte",
-          "port": "Port TCP",
-          "unit_id": "Unit ID Modbus",
+          "host": "Adresse IP / hôte de la passerelle",
+          "port": "Port TCP de la passerelle",
+          "unit_id": "Unit ID Modbus du Smart Next",
           "timeout": "Timeout (s)",
           "reconnect_delay": "Délai de reconnexion (s)",
           "scan_interval": "Intervalle d'interrogation (s)"
@@ -16,7 +16,7 @@
       }
     },
     "error": {
-      "cannot_connect": "Impossible de se connecter au SmartNext. Vérifie l’adresse, le port et le Unit ID.",
+      "cannot_connect": "Impossible de lire le Smart Next via la passerelle. Vérifie son adresse/port, le mode TCP vers RTU, les paramètres série et le Unit ID du Smart Next.",
       "unknown": "Erreur inattendue."
     },
     "abort": {
