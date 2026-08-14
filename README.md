@@ -8,9 +8,11 @@
 
 > **Unofficial project** — This independent community integration was created for fun and for my own Home Assistant installation. It is not developed, approved, endorsed, or maintained by AstralPool or Fluidra, and is not affiliated with either company. AstralPool, Fluidra, Smart Next, and their product names and trademarks remain the property of their respective owners. Support requests for this integration must be directed to its author through GitHub, not to AstralPool or Fluidra.
 
-Custom Home Assistant integration for an **AstralPool Smart Next** pool controller connected through a **Modbus TCP-to-RTU gateway**.
+Custom Home Assistant integration for an **AstralPool Smart Next** pool controller connected through a **separate external Modbus RTU-to-TCP gateway**.
 
-The register map in version 0.2.9 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
+> **Hardware required separately:** the Smart Next does not include an Ethernet/Modbus TCP interface. A compatible RS-485 **Modbus RTU-to-TCP converter must be purchased, powered, wired and configured separately**. The converter is not supplied with the Smart Next and is not part of this software integration.
+
+The register map in version 0.2.10 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
 
 ## About this project
 
@@ -24,11 +26,11 @@ I originally developed this integration for fun and for my own Home Assistant in
 
 ### Connection architecture
 
-The Smart Next communicates over Modbus RTU / RS-485. Home Assistant connects to a network gateway using Modbus TCP; the gateway converts each request to Modbus RTU:
+The Smart Next communicates over Modbus RTU / RS-485. It therefore requires a **separate hardware gateway**, installed between the Smart Next and the network. Home Assistant connects to that external gateway using Modbus TCP; the gateway converts each request to Modbus RTU:
 
 `Home Assistant → Ethernet/Wi-Fi (Modbus TCP) → Waveshare gateway → RS-485 (Modbus RTU) → Smart Next`
 
-This integration has been tested with the [Waveshare RS485 to Wi-Fi/Ethernet gateway](https://www.amazon.fr/dp/B0BGHVRMPJ). Other transparent Modbus TCP-to-RTU gateways may work but are not tested.
+This integration has been tested with a separately purchased [Waveshare RS485 to Wi-Fi/Ethernet gateway](https://www.amazon.fr/dp/B0BGHVRMPJ). This Waveshare module is independent from AstralPool/Fluidra and is not included with the Smart Next or with this integration. Other transparent Modbus RTU-to-TCP gateways may work but are not tested.
 
 ### Known-working Waveshare settings
 

@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Connect to SmartNext",
-        "description": "Connect to the Smart Next through a Modbus TCP-to-RTU gateway (tested with Waveshare).",
+        "description": "Requires a separate external Modbus RTU-to-TCP gateway (tested with Waveshare; hardware not included with Smart Next).",
         "data": {
           "host": "Gateway IP address / host",
           "port": "Gateway TCP port",

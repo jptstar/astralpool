@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Connexion au SmartNext",
-        "description": "Connecte le Smart Next via une passerelle Modbus TCP vers RTU (testé avec Waveshare).",
+        "description": "Nécessite une passerelle externe Modbus RTU vers TCP achetée séparément (testé avec Waveshare ; matériel non fourni avec le Smart Next).",
         "data": {
           "host": "Adresse IP / hôte de la passerelle",
           "port": "Port TCP de la passerelle",
