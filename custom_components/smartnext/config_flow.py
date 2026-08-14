@@ -8,6 +8,11 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_TIMEOUT
 from homeassistant.core import callback
+from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
+)
 
 from .api import SmartNextApi, SmartNextCommunicationError
 from .const import (
@@ -24,6 +29,18 @@ from .const import (
     MIN_SCAN_INTERVAL,
 )
 
+_UNIT_ID_SELECTOR = vol.All(
+    NumberSelector(
+        NumberSelectorConfig(
+            min=0,
+            max=247,
+            step=1,
+            mode=NumberSelectorMode.BOX,
+        )
+    ),
+    vol.Coerce(int),
+)
+
 
 def _schema(defaults: dict | None = None) -> vol.Schema:
     defaults = defaults or {}
@@ -37,7 +54,7 @@ def _schema(defaults: dict | None = None) -> vol.Schema:
             ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
             vol.Required(
                 CONF_UNIT_ID, default=defaults.get(CONF_UNIT_ID, DEFAULT_UNIT_ID)
-            ): vol.All(vol.Coerce(int), vol.Range(min=0, max=247)),
+            ): _UNIT_ID_SELECTOR,
             vol.Required(
                 CONF_TIMEOUT, default=defaults.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
             ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=60)),
@@ -149,7 +166,7 @@ class SmartNextOptionsFlow(config_entries.OptionsFlow):
                 {
                     vol.Required(
                         CONF_UNIT_ID, default=defaults[CONF_UNIT_ID]
-                    ): vol.All(vol.Coerce(int), vol.Range(min=0, max=247)),
+                    ): _UNIT_ID_SELECTOR,
                     vol.Required(
                         CONF_TIMEOUT, default=defaults[CONF_TIMEOUT]
                     ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=60)),
