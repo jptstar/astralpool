@@ -60,12 +60,14 @@ SENSORS: tuple[SmartNextSensorDescription, ...] = (
         translation_key="temperature_min",
         data_key="temperature_min",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SmartNextSensorDescription(
         key="temperature_max",
         translation_key="temperature_max",
         data_key="temperature_max",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SmartNextSensorDescription(
         key="salt",
@@ -79,12 +81,14 @@ SENSORS: tuple[SmartNextSensorDescription, ...] = (
         translation_key="salt_min",
         data_key="salt_min",
         native_unit_of_measurement="ppt",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SmartNextSensorDescription(
         key="salt_max",
         translation_key="salt_max",
         data_key="salt_max",
         native_unit_of_measurement="ppt",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SmartNextSensorDescription(
         key="ph",
@@ -98,6 +102,7 @@ SENSORS: tuple[SmartNextSensorDescription, ...] = (
         translation_key="ph_dosage_elapsed",
         data_key="ph_dosage_elapsed",
         native_unit_of_measurement=UnitOfTime.MINUTES,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SmartNextSensorDescription(
         key="ph_pump_output",
@@ -112,12 +117,14 @@ SENSORS: tuple[SmartNextSensorDescription, ...] = (
         data_key="ph_total_hours",
         native_unit_of_measurement=UnitOfTime.HOURS,
         state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SmartNextSensorDescription(
         key="ph_partial_hours",
         translation_key="ph_partial_hours",
         data_key="ph_partial_hours",
         native_unit_of_measurement=UnitOfTime.HOURS,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SmartNextSensorDescription(
         key="orp",
@@ -168,12 +175,14 @@ SENSORS: tuple[SmartNextSensorDescription, ...] = (
         data_key="electrolysis_total_hours",
         native_unit_of_measurement=UnitOfTime.HOURS,
         state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SmartNextSensorDescription(
         key="electrolysis_partial_hours",
         translation_key="electrolysis_partial_hours",
         data_key="electrolysis_partial_hours",
         native_unit_of_measurement=UnitOfTime.HOURS,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
 

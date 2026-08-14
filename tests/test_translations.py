@@ -23,6 +23,50 @@ def test_french_entity_names_cover_every_english_entity() -> None:
                 assert french[platform][key]["name"] != english_translation["name"]
 
 
+def test_entity_names_are_grouped_by_subsystem() -> None:
+    """Keep alphabetical device-page sorting useful in both languages."""
+    allowed_english_prefixes = {
+        "Cover",
+        "Electrolysis",
+        "Flow",
+        "ORP",
+        "pH",
+        "Salinity",
+        "System",
+        "Temperature",
+    }
+    allowed_french_prefixes = {
+        "Couverture",
+        "Débit",
+        "ORP",
+        "pH",
+        "Salinité",
+        "Système",
+        "Température",
+        "Électrolyse",
+    }
+
+    for filename, allowed_prefixes in (
+        ("en.json", allowed_english_prefixes),
+        ("fr.json", allowed_french_prefixes),
+    ):
+        entities = _load_json(
+            f"custom_components/smartnext/translations/{filename}"
+        )["entity"]
+        for platform_entities in entities.values():
+            for translation in platform_entities.values():
+                name = translation["name"]
+                assert " · " in name
+                assert name.split(" · ", 1)[0] in allowed_prefixes
+
+
+def test_english_strings_match_translation_catalog() -> None:
+    """Keep the source catalog synchronized with the English translation."""
+    assert _load_json("custom_components/smartnext/strings.json") == _load_json(
+        "custom_components/smartnext/translations/en.json"
+    )
+
+
 def test_ph_initialization_options_are_translated() -> None:
     """Ensure every stable select option has English and French labels."""
     source = Path("custom_components/smartnext/select.py").read_text(encoding="utf-8")

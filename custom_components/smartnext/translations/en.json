@@ -39,205 +39,205 @@
   "entity": {
     "sensor": {
       "electrolysis_rated_capacity": {
-        "name": "Electrolysis rated capacity"
+        "name": "Electrolysis · rated capacity"
       },
       "boost_remaining_time": {
-        "name": "Boost remaining time"
+        "name": "Electrolysis · Boost time remaining"
       },
       "temperature": {
-        "name": "Water temperature"
+        "name": "Temperature · water"
       },
       "temperature_min": {
-        "name": "Low temperature threshold"
+        "name": "Temperature · low threshold"
       },
       "temperature_max": {
-        "name": "High temperature threshold"
+        "name": "Temperature · high threshold"
       },
       "salt": {
-        "name": "Salt"
+        "name": "Salinity · measurement"
       },
       "salt_min": {
-        "name": "Low salt threshold"
+        "name": "Salinity · low threshold"
       },
       "salt_max": {
-        "name": "High salt threshold"
+        "name": "Salinity · high threshold"
       },
       "ph": {
-        "name": "pH"
+        "name": "pH · measurement"
       },
       "ph_dosage_elapsed": {
-        "name": "pH dosage elapsed time"
+        "name": "pH · dosage elapsed time"
       },
       "ph_pump_output": {
-        "name": "pH pump output"
+        "name": "pH · pump output"
       },
       "ph_total_hours": {
-        "name": "pH dosing total hours"
+        "name": "pH · total dosing hours"
       },
       "ph_partial_hours": {
-        "name": "pH dosing partial hours"
+        "name": "pH · partial dosing hours"
       },
       "orp": {
-        "name": "ORP"
+        "name": "ORP · measurement"
       },
       "electrolysis_functional_target": {
-        "name": "Electrolysis functional target"
+        "name": "Electrolysis · active target"
       },
       "electrolysis_production": {
-        "name": "Electrolysis production"
+        "name": "Electrolysis · production"
       },
       "electrolysis_current": {
-        "name": "Electrolysis current"
+        "name": "Electrolysis · current"
       },
       "electrolysis_voltage": {
-        "name": "Electrolysis voltage"
+        "name": "Electrolysis · voltage"
       },
       "electrolysis_chlorine_production": {
-        "name": "Chlorine production"
+        "name": "Electrolysis · chlorine production"
       },
       "electrolysis_total_hours": {
-        "name": "Electrolysis total hours"
+        "name": "Electrolysis · total hours"
       },
       "electrolysis_partial_hours": {
-        "name": "Electrolysis partial hours"
+        "name": "Electrolysis · partial hours"
       }
     },
     "binary_sensor": {
       "general_alarm": {
-        "name": "General alarm"
+        "name": "System · general alarm"
       },
       "flow_alarm": {
-        "name": "Flow alarm"
+        "name": "Flow · general alarm"
       },
       "internal_flow_alarm": {
-        "name": "Internal flow / air bubble alarm"
+        "name": "Flow · internal / air bubble alarm"
       },
       "external_flow_switch_alarm": {
-        "name": "External flow switch alarm"
+        "name": "Flow · external sensor alarm"
       },
       "internal_air_bubble_detected": {
-        "name": "Internal air bubble detected"
+        "name": "Flow · internal air bubble detected"
       },
       "external_flow_switch_open": {
-        "name": "External flow switch open"
+        "name": "Flow · external sensor open"
       },
       "electrolysis_check_cell_alarm": {
-        "name": "Check cell alarm"
+        "name": "Electrolysis · check cell alarm"
       },
       "electrolysis_low_conductivity_alarm": {
-        "name": "Low conductivity alarm"
+        "name": "Electrolysis · low conductivity alarm"
       },
       "electrolysis_high_conductivity_alarm": {
-        "name": "High conductivity alarm"
+        "name": "Electrolysis · high conductivity alarm"
       },
       "ph_low_alarm": {
-        "name": "Low pH alarm"
+        "name": "pH · low alarm"
       },
       "ph_high_alarm": {
-        "name": "High pH alarm"
+        "name": "pH · high alarm"
       },
       "ph_pump_stop_alarm": {
-        "name": "pH pump-stop alarm"
+        "name": "pH · pump-stop alarm"
       },
       "ph_fuse_alarm": {
-        "name": "pH fuse alarm"
+        "name": "pH · fuse alarm"
       },
       "orp_low_alarm": {
-        "name": "Low ORP alarm"
+        "name": "ORP · low alarm"
       },
       "orp_high_alarm": {
-        "name": "High ORP alarm"
+        "name": "ORP · high alarm"
       },
       "temperature_low_alarm": {
-        "name": "Low temperature alarm"
+        "name": "Temperature · low alarm"
       },
       "temperature_high_alarm": {
-        "name": "High temperature alarm"
+        "name": "Temperature · high alarm"
       },
       "salt_low_alarm": {
-        "name": "Low salt alarm"
+        "name": "Salinity · low alarm"
       },
       "salt_high_alarm": {
-        "name": "High salt alarm"
+        "name": "Salinity · high alarm"
       },
       "ph_measure_unreliable": {
-        "name": "pH measurement unreliable"
+        "name": "pH · unreliable measurement"
       },
       "orp_measure_unreliable": {
-        "name": "ORP measurement unreliable"
+        "name": "ORP · unreliable measurement"
       },
       "temperature_measure_unreliable": {
-        "name": "Temperature measurement unreliable"
+        "name": "Temperature · unreliable measurement"
       },
       "salt_measure_unreliable": {
-        "name": "Salt measurement unreliable"
+        "name": "Salinity · unreliable measurement"
       },
       "salt_current_insufficient": {
-        "name": "Salt measurement current insufficient"
+        "name": "Salinity · insufficient measurement current"
       },
       "salt_voltage_insufficient": {
-        "name": "Salt measurement voltage insufficient"
+        "name": "Salinity · insufficient measurement voltage"
       },
       "treatment_halted": {
-        "name": "Treatment halted"
+        "name": "System · treatment halted"
       },
       "electrolysis_running": {
-        "name": "Electrolysis running"
+        "name": "Electrolysis · running"
       },
       "electrolysis_reverse_polarity": {
-        "name": "Electrolysis reverse polarity"
+        "name": "Electrolysis · reverse polarity"
       },
       "cover_input": {
-        "name": "Cover input"
+        "name": "Cover · input"
       },
       "cover_active": {
-        "name": "Cover active"
+        "name": "Cover · active"
       },
       "ph_initializing": {
-        "name": "pH initializing"
+        "name": "pH · initializing"
       },
       "ph_dosing_active": {
-        "name": "pH dosing active"
+        "name": "pH · dosing active"
       },
       "biopool_mode": {
-        "name": "Biopool mode"
+        "name": "System · Biopool mode"
       },
       "external_chlorine_control_input": {
-        "name": "External chlorine control input"
+        "name": "Electrolysis · external chlorine input"
       },
       "internal_orp_control_stop": {
-        "name": "Internal ORP regulation stop"
+        "name": "Electrolysis · internal ORP stop"
       },
       "external_control_stop": {
-        "name": "External regulation stop"
+        "name": "Electrolysis · external regulation stop"
       }
     },
     "number": {
       "temperature_min_setpoint": {
-        "name": "Low temperature threshold"
+        "name": "Temperature · low threshold"
       },
       "temperature_max_setpoint": {
-        "name": "High temperature threshold"
+        "name": "Temperature · high threshold"
       },
       "ph_setpoint": {
-        "name": "pH setpoint"
+        "name": "pH · setpoint"
       },
       "ph_dosage_limit": {
-        "name": "pH dosage time limit"
+        "name": "pH · dosage time limit"
       },
       "orp_setpoint": {
-        "name": "ORP setpoint"
+        "name": "ORP · setpoint"
       },
       "electrolysis_normal_setpoint": {
-        "name": "Electrolysis normal production"
+        "name": "Electrolysis · normal production"
       },
       "electrolysis_cover_setpoint": {
-        "name": "Electrolysis cover production"
+        "name": "Electrolysis · cover production"
       }
     },
     "select": {
       "ph_initialization_time": {
-        "name": "pH initialization time",
+        "name": "pH · initialization time",
         "state": {
           "off": "Off",
           "seconds_60": "60 seconds",
@@ -246,7 +246,7 @@
         }
       },
       "polarity_reversal_period": {
-        "name": "Electrolysis polarity reversal period",
+        "name": "Electrolysis · polarity reversal period",
         "state": {
           "hours_2": "2 hours",
           "hours_3": "3 hours",
@@ -257,45 +257,45 @@
     },
     "switch": {
       "boost_mode": {
-        "name": "Boost mode"
+        "name": "Electrolysis · Boost mode"
       },
       "cover_control_enabled": {
-        "name": "Cover control"
+        "name": "Cover · control"
       },
       "internal_orp_control_enabled": {
-        "name": "Internal ORP regulation"
+        "name": "ORP · internal regulation"
       },
       "external_chlorine_control_enabled": {
-        "name": "External chlorine regulation"
+        "name": "Electrolysis · external chlorine regulation"
       },
       "internal_flow_sensor_enabled": {
-        "name": "Internal flow sensor"
+        "name": "Flow · internal sensor"
       },
       "external_flow_sensor_enabled": {
-        "name": "External flow sensor"
+        "name": "Flow · external sensor"
       },
       "ph_intelligent_dosing_enabled": {
-        "name": "Intelligent pH dosing"
+        "name": "pH · intelligent dosing"
       },
       "ph_pump_stop_enabled": {
-        "name": "pH pump-stop protection"
+        "name": "pH · pump-stop protection"
       },
       "temperature_low_alarm_enabled": {
-        "name": "Low temperature alarm enable"
+        "name": "Temperature · low alarm"
       },
       "temperature_high_alarm_enabled": {
-        "name": "High temperature alarm enable"
+        "name": "Temperature · high alarm"
       },
       "salt_low_alarm_enabled": {
-        "name": "Low salt alarm enable"
+        "name": "Salinity · low alarm"
       },
       "salt_high_alarm_enabled": {
-        "name": "High salt alarm enable"
+        "name": "Salinity · high alarm"
       }
     },
     "button": {
       "reset_ph_pump_stop": {
-        "name": "Reset pH pump-stop"
+        "name": "pH · reset pump-stop"
       }
     }
   }
