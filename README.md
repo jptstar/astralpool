@@ -1,12 +1,16 @@
 # SmartNext for Home Assistant
 
+<p align="center">
+  <img src="brand/logo.png" alt="SmartNext for Home Assistant" width="240">
+</p>
+
 [![GitHub Release](https://img.shields.io/github/v/release/jptstar/astralpool_smartnext)](https://github.com/jptstar/astralpool_smartnext/releases)
 
 > **Unofficial project** — This independent community integration was created for fun and for my own Home Assistant installation. It is not developed, approved, endorsed, or maintained by AstralPool or Fluidra, and is not affiliated with either company. AstralPool, Fluidra, Smart Next, and their product names and trademarks remain the property of their respective owners. Support requests for this integration must be directed to its author through GitHub, not to AstralPool or Fluidra.
 
 Custom Home Assistant integration for an **AstralPool Smart Next** pool controller connected through a **Modbus TCP-to-RTU gateway**.
 
-The register map in version 0.2.7 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
+The register map in version 0.2.8 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
 
 ## About this project
 
