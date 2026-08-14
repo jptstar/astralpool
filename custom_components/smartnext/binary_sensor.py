@@ -58,6 +58,7 @@ BINARY_SENSORS: tuple[SmartNextBinarySensorDescription, ...] = tuple(
         translation_key=key,
         data_key=key,
         device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
     )
     for key in PROBLEM_SENSORS
 ) + (

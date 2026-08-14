@@ -30,7 +30,6 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         translation_key="boost_mode",
         data_key="boost_mode",
         setter_name="async_set_boost_mode",
-        entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=True,
     ),
     SmartNextSwitchDescription(

@@ -149,6 +149,20 @@ flow states, electrolysis stop causes, electrolysis running/polarity, cover stat
 and pH dosing status. Hardware version, firmware version and serial number are
 included in the Home Assistant device information.
 
+### Clearer entity organization in v0.2.16
+
+The device page now uses Home Assistant's native sections more consistently:
+
+- day-to-day actions and setpoints stay under **Controls**;
+- live measurements and operating states stay under **Sensors**;
+- advanced enable/disable settings stay under **Configuration**;
+- alarms, raw states, lifetime counters and read-only threshold copies move to
+  **Diagnostic**.
+
+Within each section, translated names use a stable subsystem prefix such as
+`Electrolysis ·`, `Flow ·`, `ORP ·`, `pH ·`, `Salinity ·` or `Temperature ·`.
+Unique IDs and existing entity IDs are unchanged.
+
 Important corrections from the verified table:
 
 - `0x242` is the external/inductive flow-switch alarm.

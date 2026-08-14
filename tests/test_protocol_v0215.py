@@ -20,13 +20,13 @@ def _constant_values() -> dict[str, object]:
     return values
 
 
-def test_v0215_manifest_and_switch_platform() -> None:
+def test_current_manifest_and_switch_platform() -> None:
     manifest = json.loads(
         Path("custom_components/smartnext/manifest.json").read_text(encoding="utf-8")
     )
     constants = _constant_values()
 
-    assert manifest["version"] == "0.2.15"
+    assert manifest["version"] == "0.2.16"
     assert "switch" in constants["PLATFORMS"]
 
 
