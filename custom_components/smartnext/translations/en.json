@@ -38,6 +38,12 @@
   },
   "entity": {
     "sensor": {
+      "electrolysis_rated_capacity": {
+        "name": "Electrolysis rated capacity"
+      },
+      "boost_remaining_time": {
+        "name": "Boost remaining time"
+      },
       "temperature": {
         "name": "Water temperature"
       },
@@ -108,6 +114,12 @@
       },
       "external_flow_switch_alarm": {
         "name": "External flow switch alarm"
+      },
+      "internal_air_bubble_detected": {
+        "name": "Internal air bubble detected"
+      },
+      "external_flow_switch_open": {
+        "name": "External flow switch open"
       },
       "electrolysis_check_cell_alarm": {
         "name": "Check cell alarm"
@@ -189,6 +201,15 @@
       },
       "biopool_mode": {
         "name": "Biopool mode"
+      },
+      "external_chlorine_control_input": {
+        "name": "External chlorine control input"
+      },
+      "internal_orp_control_stop": {
+        "name": "Internal ORP regulation stop"
+      },
+      "external_control_stop": {
+        "name": "External regulation stop"
       }
     },
     "number": {
@@ -223,6 +244,53 @@
           "seconds_120": "120 seconds",
           "seconds_240": "240 seconds"
         }
+      },
+      "polarity_reversal_period": {
+        "name": "Electrolysis polarity reversal period",
+        "state": {
+          "hours_2": "2 hours",
+          "hours_3": "3 hours",
+          "hours_4": "4 hours",
+          "hours_7": "7 hours"
+        }
+      }
+    },
+    "switch": {
+      "boost_mode": {
+        "name": "Boost mode"
+      },
+      "cover_control_enabled": {
+        "name": "Cover control"
+      },
+      "internal_orp_control_enabled": {
+        "name": "Internal ORP regulation"
+      },
+      "external_chlorine_control_enabled": {
+        "name": "External chlorine regulation"
+      },
+      "internal_flow_sensor_enabled": {
+        "name": "Internal flow sensor"
+      },
+      "external_flow_sensor_enabled": {
+        "name": "External flow sensor"
+      },
+      "ph_intelligent_dosing_enabled": {
+        "name": "Intelligent pH dosing"
+      },
+      "ph_pump_stop_enabled": {
+        "name": "pH pump-stop protection"
+      },
+      "temperature_low_alarm_enabled": {
+        "name": "Low temperature alarm enable"
+      },
+      "temperature_high_alarm_enabled": {
+        "name": "High temperature alarm enable"
+      },
+      "salt_low_alarm_enabled": {
+        "name": "Low salt alarm enable"
+      },
+      "salt_high_alarm_enabled": {
+        "name": "High salt alarm enable"
       }
     },
     "button": {

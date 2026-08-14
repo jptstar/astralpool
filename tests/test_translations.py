@@ -53,3 +53,29 @@ def test_ph_initialization_options_are_translated() -> None:
     )["entity"]["select"]["ph_initialization_time"]["state"]
     assert french_states["off"] == "Désactivé"
 
+
+def test_polarity_reversal_options_are_translated() -> None:
+    """Ensure every polarity period has English and French labels."""
+    source = Path("custom_components/smartnext/select.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    option_assignment = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name)
+            and target.id == "POLARITY_OPTIONS_TO_HOURS"
+            for target in node.targets
+        )
+    )
+    options = set(ast.literal_eval(option_assignment.value))
+
+    for path in (
+        "custom_components/smartnext/strings.json",
+        "custom_components/smartnext/translations/en.json",
+        "custom_components/smartnext/translations/fr.json",
+    ):
+        states = _load_json(path)["entity"]["select"][
+            "polarity_reversal_period"
+        ]["state"]
+        assert states.keys() == options

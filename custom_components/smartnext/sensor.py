@@ -20,6 +20,7 @@ from homeassistant.const import (
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .entity import SmartNextEntity
@@ -33,6 +34,19 @@ class SmartNextSensorDescription(SensorEntityDescription):
 
 
 SENSORS: tuple[SmartNextSensorDescription, ...] = (
+    SmartNextSensorDescription(
+        key="electrolysis_rated_capacity",
+        translation_key="electrolysis_rated_capacity",
+        data_key="product_capacity",
+        native_unit_of_measurement="g/h",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SmartNextSensorDescription(
+        key="boost_remaining_time",
+        translation_key="boost_remaining_time",
+        data_key="boost_remaining_time",
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+    ),
     SmartNextSensorDescription(
         key="temperature",
         translation_key="temperature",

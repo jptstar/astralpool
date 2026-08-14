@@ -10,17 +10,36 @@ from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
 from .const import (
+    COIL_ELECTROLYSIS_BOOST,
+    COIL_ELECTROLYSIS_COVER_CONTROL_ENABLE,
+    COIL_ELECTROLYSIS_EXTERNAL_CONTROL_ENABLE,
+    COIL_ELECTROLYSIS_INTERNAL_ORP_CONTROL_ENABLE,
+    COIL_ELECTROLYSIS_POLARITY_PERIOD_HIGH,
+    COIL_ELECTROLYSIS_POLARITY_PERIOD_LOW,
+    COIL_FLOW_EXTERNAL_SENSOR_ENABLE,
+    COIL_FLOW_INTERNAL_SENSOR_ENABLE,
+    COIL_PH_INTELLIGENT_DOSING_ENABLE,
+    COIL_PH_PUMP_STOP_ENABLE,
     COIL_PH_PUMP_STOP_RESET,
+    COIL_SALT_HIGH_ALARM_ENABLE,
+    COIL_SALT_LOW_ALARM_ENABLE,
+    COIL_TEMPERATURE_HIGH_ALARM_ENABLE,
+    COIL_TEMPERATURE_LOW_ALARM_ENABLE,
     DI_COVER_ACTIVE,
     DI_COVER_INPUT,
     DI_ELECTROLYSIS_CHECK_CELL,
+    DI_ELECTROLYSIS_EXTERNAL_CONTROL_INPUT,
+    DI_ELECTROLYSIS_EXTERNAL_CONTROL_STOP,
     DI_ELECTROLYSIS_HIGH_CONDUCTIVITY,
+    DI_ELECTROLYSIS_INTERNAL_ORP_STOP,
     DI_ELECTROLYSIS_LOW_CONDUCTIVITY,
     DI_ELECTROLYSIS_POLARITY,
     DI_ELECTROLYSIS_RUNNING,
     DI_FLOW_EXTERNAL_SWITCH,
+    DI_FLOW_EXTERNAL_STATUS,
     DI_FLOW_GENERAL,
     DI_FLOW_INTERNAL,
+    DI_FLOW_INTERNAL_STATUS,
     DI_GENERAL_ALARM,
     DI_ORP_HIGH_ALARM,
     DI_ORP_LOW_ALARM,
@@ -41,14 +60,28 @@ from .const import (
     DI_TEMPERATURE_LOW_ALARM,
     DI_TEMPERATURE_MEASURE_UNRELIABLE,
     DI_TREATMENT_HALTED,
+    HR_ELECTROLYSIS_BOOST_REMAINING,
+    HR_ELECTROLYSIS_CONTROL_WORD,
     HR_ELECTROLYSIS_COVER_SETPOINT,
     HR_ELECTROLYSIS_NORMAL_SETPOINT,
+    HR_FIRMWARE_VERSION,
+    HR_FLOW_CONTROL_WORD,
+    HR_HARDWARE_VERSION,
     HR_ORP_SETPOINT,
     HR_PH_DOSAGE_LIMIT,
     HR_PH_INIT_TIME,
+    HR_PH_OUTPUT_CONTROL_WORD,
     HR_PH_SETPOINT,
+    HR_PRODUCT_CAPACITY,
+    HR_PRODUCT_CODE_HIGH,
+    HR_SALT_CONTROL_WORD,
     HR_SALT_MAX,
     HR_SALT_MIN,
+    HR_SERIAL_HIGH,
+    HR_SERIAL_LOW,
+    HR_SERIAL_MIDDLE,
+    HR_TECHNOLOGIES_IMPLEMENTED,
+    HR_TEMPERATURE_CONTROL_WORD,
     HR_TEMPERATURE_MAX,
     HR_TEMPERATURE_MIN,
     HR_TECHNOLOGIES_ENABLED,
@@ -70,6 +103,7 @@ from .const import (
     IR_SALT,
     IR_TEMPERATURE,
     PH_INIT_ALLOWED_SECONDS,
+    POLARITY_REVERSAL_ALLOWED_HOURS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -102,6 +136,7 @@ class SmartNextApi:
             timeout=timeout,
             reconnect_delay=reconnect_delay,
         )
+        self._identification: dict[str, Any] | None = None
 
     @property
     def connected(self) -> bool:
@@ -205,6 +240,70 @@ class SmartNextApi:
     def _combine_u32(lsb: int, msb: int) -> int:
         return (msb << 16) | lsb
 
+    @staticmethod
+    def _combine_u48(high: int, middle: int, low: int) -> int:
+        return (high << 32) | (middle << 16) | low
+
+    @staticmethod
+    def _decode_boost_minutes(value: int) -> int:
+        """Decode the protocol's HH/MM byte layout into minutes."""
+        return ((value >> 8) * 60) + (value & 0xFF)
+
+    @staticmethod
+    def _decode_polarity_period(control_word: int) -> int:
+        """Decode electrolysis control-word bits 9..10."""
+        code = (control_word >> 9) & 0b11
+        return (2, 3, 4, 7)[code]
+
+    async def _async_read_identification(self) -> dict[str, Any]:
+        """Read immutable identification data once per API instance."""
+        if self._identification is not None:
+            return self._identification
+
+        try:
+            identification = await self._read_holding_registers(
+                HR_PRODUCT_CODE_HIGH,
+                HR_SERIAL_LOW - HR_PRODUCT_CODE_HIGH + 1,
+            )
+        except SmartNextCommunicationError as err:
+            _LOGGER.debug("SmartNext identification registers unavailable: %s", err)
+            self._identification = {}
+            return self._identification
+
+        def value(address: int) -> int:
+            return identification[address - HR_PRODUCT_CODE_HIGH]
+
+        serial = self._combine_u48(
+            value(HR_SERIAL_HIGH),
+            value(HR_SERIAL_MIDDLE),
+            value(HR_SERIAL_LOW),
+        )
+        technologies_implemented = value(HR_TECHNOLOGIES_IMPLEMENTED)
+        hardware_version = value(HR_HARDWARE_VERSION)
+        firmware_version = value(HR_FIRMWARE_VERSION)
+
+        self._identification = {
+            "product_capacity": value(HR_PRODUCT_CAPACITY),
+            "hardware_version": f"0x{hardware_version:04X}"
+            if hardware_version
+            else None,
+            "firmware_version": f"0x{firmware_version:04X}"
+            if firmware_version
+            else None,
+            "serial_number": f"{serial:012X}" if serial else None,
+            "technologies_implemented": technologies_implemented,
+            "technology_electrolysis_implemented": bool(
+                technologies_implemented & (1 << 0)
+            ),
+            "technology_ph_implemented": bool(technologies_implemented & (1 << 1)),
+            "technology_orp_implemented": bool(technologies_implemented & (1 << 2)),
+            "technology_temperature_implemented": bool(
+                technologies_implemented & (1 << 4)
+            ),
+            "technology_salt_implemented": bool(technologies_implemented & (1 << 5)),
+        }
+        return self._identification
+
     async def async_reset_ph_pump_stop(self) -> None:
         """Rearm the pH pump-stop using coil 0x56D."""
         await self.async_write_coil(COIL_PH_PUMP_STOP_RESET, True)
@@ -213,7 +312,7 @@ class SmartNextApi:
 
     async def async_read_all(self) -> dict[str, Any]:
         """Read the verified SmartNext v1.70 points."""
-        data: dict[str, Any] = {}
+        data = dict(await self._async_read_identification())
 
         # Electrolysis input registers 0x41..0x45.
         electrolysis = await self._read_input_registers(0x41, 5)
@@ -263,35 +362,93 @@ class SmartNextApi:
         technologies_enabled = (
             await self._read_holding_registers(HR_TECHNOLOGIES_ENABLED, 1)
         )[0]
+        data["technologies_enabled"] = technologies_enabled
+        data["technology_electrolysis_enabled"] = bool(
+            technologies_enabled & (1 << 0)
+        )
+        data["technology_ph_enabled"] = bool(technologies_enabled & (1 << 1))
+        data["technology_orp_enabled"] = bool(technologies_enabled & (1 << 2))
+        data["technology_temperature_enabled"] = bool(
+            technologies_enabled & (1 << 4)
+        )
+        data["technology_salt_enabled"] = bool(technologies_enabled & (1 << 5))
         # Protocol v1.70: bit 9 = Biopool mode enabled.
         data["biopool_mode"] = bool(technologies_enabled & (1 << 9))
 
-        electrolysis_setpoints = await self._read_holding_registers(0x41, 2)
-        data["electrolysis_normal_setpoint"] = electrolysis_setpoints[
-            HR_ELECTROLYSIS_NORMAL_SETPOINT - 0x41
-        ]
-        data["electrolysis_cover_setpoint"] = electrolysis_setpoints[
-            HR_ELECTROLYSIS_COVER_SETPOINT - 0x41
-        ]
-
-        data["ph_init_time"] = (
-            await self._read_holding_registers(HR_PH_INIT_TIME, 1)
+        flow_control = (
+            await self._read_holding_registers(HR_FLOW_CONTROL_WORD, 1)
         )[0]
-        ph_config = await self._read_holding_registers(HR_PH_SETPOINT, 2)
-        data["ph_setpoint"] = ph_config[HR_PH_SETPOINT - 0x57] / 100
-        data["ph_dosage_limit"] = ph_config[HR_PH_DOSAGE_LIMIT - 0x57]
+        data["internal_flow_sensor_enabled"] = bool(flow_control & (1 << 0))
+        data["external_flow_sensor_enabled"] = bool(flow_control & (1 << 1))
+
+        electrolysis_control = await self._read_holding_registers(
+            HR_ELECTROLYSIS_CONTROL_WORD, 5
+        )
+        electrolysis_control_word = electrolysis_control[0]
+        data["boost_mode"] = bool(electrolysis_control_word & (1 << 1))
+        data["cover_control_enabled"] = bool(
+            electrolysis_control_word & (1 << 2)
+        )
+        data["external_chlorine_control_enabled"] = bool(
+            electrolysis_control_word & (1 << 4)
+        )
+        data["internal_orp_control_enabled"] = bool(
+            electrolysis_control_word & (1 << 5)
+        )
+        data["polarity_reversal_period"] = self._decode_polarity_period(
+            electrolysis_control_word
+        )
+        data["electrolysis_normal_setpoint"] = electrolysis_control[
+            HR_ELECTROLYSIS_NORMAL_SETPOINT - HR_ELECTROLYSIS_CONTROL_WORD
+        ]
+        data["electrolysis_cover_setpoint"] = electrolysis_control[
+            HR_ELECTROLYSIS_COVER_SETPOINT - HR_ELECTROLYSIS_CONTROL_WORD
+        ]
+        data["boost_remaining_time"] = self._decode_boost_minutes(
+            electrolysis_control[
+                HR_ELECTROLYSIS_BOOST_REMAINING - HR_ELECTROLYSIS_CONTROL_WORD
+            ]
+        )
+
+        ph_config = await self._read_holding_registers(HR_PH_INIT_TIME, 4)
+        data["ph_init_time"] = ph_config[0]
+        ph_output_control = ph_config[HR_PH_OUTPUT_CONTROL_WORD - HR_PH_INIT_TIME]
+        data["ph_intelligent_dosing_enabled"] = bool(
+            ph_output_control & (1 << 6)
+        )
+        data["ph_pump_stop_enabled"] = bool(ph_output_control & (1 << 12))
+        data["ph_setpoint"] = ph_config[HR_PH_SETPOINT - HR_PH_INIT_TIME] / 100
+        data["ph_dosage_limit"] = ph_config[
+            HR_PH_DOSAGE_LIMIT - HR_PH_INIT_TIME
+        ]
 
         data["orp_setpoint"] = (
             await self._read_holding_registers(HR_ORP_SETPOINT, 1)
         )[0]
 
-        temp_limits = await self._read_holding_registers(HR_TEMPERATURE_MIN, 2)
-        data["temperature_min"] = temp_limits[0] / 10
-        data["temperature_max"] = temp_limits[1] / 10
+        temperature_config = await self._read_holding_registers(
+            HR_TEMPERATURE_CONTROL_WORD, 4
+        )
+        temperature_control_word = temperature_config[0]
+        data["temperature_low_alarm_enabled"] = bool(
+            temperature_control_word & (1 << 11)
+        )
+        data["temperature_high_alarm_enabled"] = bool(
+            temperature_control_word & (1 << 12)
+        )
+        data["temperature_min"] = temperature_config[
+            HR_TEMPERATURE_MIN - HR_TEMPERATURE_CONTROL_WORD
+        ] / 10
+        data["temperature_max"] = temperature_config[
+            HR_TEMPERATURE_MAX - HR_TEMPERATURE_CONTROL_WORD
+        ] / 10
 
-        salt_limits = await self._read_holding_registers(HR_SALT_MIN, 2)
-        data["salt_min"] = salt_limits[0] / 100
-        data["salt_max"] = salt_limits[1] / 100
+        salt_config = await self._read_holding_registers(HR_SALT_CONTROL_WORD, 4)
+        salt_control_word = salt_config[0]
+        data["salt_low_alarm_enabled"] = bool(salt_control_word & (1 << 11))
+        data["salt_high_alarm_enabled"] = bool(salt_control_word & (1 << 12))
+        data["salt_min"] = salt_config[HR_SALT_MIN - HR_SALT_CONTROL_WORD] / 100
+        data["salt_max"] = salt_config[HR_SALT_MAX - HR_SALT_CONTROL_WORD] / 100
 
         # General status.
         general = await self._read_discrete_inputs(DI_GENERAL_ALARM, 3)
@@ -303,6 +460,12 @@ class SmartNextApi:
         data["flow_alarm"] = flow[0]
         data["internal_flow_alarm"] = flow[1]
         data["external_flow_switch_alarm"] = flow[2]
+
+        flow_status = await self._read_discrete_inputs(DI_FLOW_INTERNAL_STATUS, 3)
+        data["internal_air_bubble_detected"] = flow_status[0]
+        data["external_flow_switch_open"] = flow_status[
+            DI_FLOW_EXTERNAL_STATUS - DI_FLOW_INTERNAL_STATUS
+        ]
 
         electrolysis_alarm = await self._read_discrete_inputs(
             DI_ELECTROLYSIS_CHECK_CELL, 3
@@ -333,7 +496,7 @@ class SmartNextApi:
 
         # Operating status.
         electrolysis_state = await self._read_discrete_inputs(
-            DI_ELECTROLYSIS_RUNNING, 4
+            DI_ELECTROLYSIS_RUNNING, 7
         )
         data["electrolysis_running"] = electrolysis_state[0]
         data["electrolysis_reverse_polarity"] = electrolysis_state[
@@ -344,6 +507,15 @@ class SmartNextApi:
         ]
         data["cover_active"] = electrolysis_state[
             DI_COVER_ACTIVE - DI_ELECTROLYSIS_RUNNING
+        ]
+        data["external_chlorine_control_input"] = electrolysis_state[
+            DI_ELECTROLYSIS_EXTERNAL_CONTROL_INPUT - DI_ELECTROLYSIS_RUNNING
+        ]
+        data["internal_orp_control_stop"] = electrolysis_state[
+            DI_ELECTROLYSIS_INTERNAL_ORP_STOP - DI_ELECTROLYSIS_RUNNING
+        ]
+        data["external_control_stop"] = electrolysis_state[
+            DI_ELECTROLYSIS_EXTERNAL_CONTROL_STOP - DI_ELECTROLYSIS_RUNNING
         ]
 
         ph_status = await self._read_discrete_inputs(DI_PH_INITIALIZING, 2)
@@ -397,3 +569,61 @@ class SmartNextApi:
 
     async def async_set_electrolysis_cover(self, value: float) -> None:
         await self.async_write_register(HR_ELECTROLYSIS_COVER_SETPOINT, round(value))
+
+    async def async_set_internal_flow_sensor_enabled(self, enabled: bool) -> None:
+        await self.async_write_coil(COIL_FLOW_INTERNAL_SENSOR_ENABLE, enabled)
+
+    async def async_set_external_flow_sensor_enabled(self, enabled: bool) -> None:
+        await self.async_write_coil(COIL_FLOW_EXTERNAL_SENSOR_ENABLE, enabled)
+
+    async def async_set_boost_mode(self, enabled: bool) -> None:
+        await self.async_write_coil(COIL_ELECTROLYSIS_BOOST, enabled)
+
+    async def async_set_cover_control_enabled(self, enabled: bool) -> None:
+        await self.async_write_coil(
+            COIL_ELECTROLYSIS_COVER_CONTROL_ENABLE, enabled
+        )
+
+    async def async_set_external_chlorine_control_enabled(
+        self, enabled: bool
+    ) -> None:
+        await self.async_write_coil(
+            COIL_ELECTROLYSIS_EXTERNAL_CONTROL_ENABLE, enabled
+        )
+
+    async def async_set_internal_orp_control_enabled(self, enabled: bool) -> None:
+        await self.async_write_coil(
+            COIL_ELECTROLYSIS_INTERNAL_ORP_CONTROL_ENABLE, enabled
+        )
+
+    async def async_set_polarity_reversal_period(self, hours: int) -> None:
+        if hours not in POLARITY_REVERSAL_ALLOWED_HOURS:
+            raise ValueError(
+                f"Invalid polarity reversal period {hours}; "
+                f"allowed values: {POLARITY_REVERSAL_ALLOWED_HOURS}"
+            )
+        code = POLARITY_REVERSAL_ALLOWED_HOURS.index(hours)
+        await self.async_write_coil(
+            COIL_ELECTROLYSIS_POLARITY_PERIOD_LOW, bool(code & 0b01)
+        )
+        await self.async_write_coil(
+            COIL_ELECTROLYSIS_POLARITY_PERIOD_HIGH, bool(code & 0b10)
+        )
+
+    async def async_set_ph_intelligent_dosing_enabled(self, enabled: bool) -> None:
+        await self.async_write_coil(COIL_PH_INTELLIGENT_DOSING_ENABLE, enabled)
+
+    async def async_set_ph_pump_stop_enabled(self, enabled: bool) -> None:
+        await self.async_write_coil(COIL_PH_PUMP_STOP_ENABLE, enabled)
+
+    async def async_set_temperature_low_alarm_enabled(self, enabled: bool) -> None:
+        await self.async_write_coil(COIL_TEMPERATURE_LOW_ALARM_ENABLE, enabled)
+
+    async def async_set_temperature_high_alarm_enabled(self, enabled: bool) -> None:
+        await self.async_write_coil(COIL_TEMPERATURE_HIGH_ALARM_ENABLE, enabled)
+
+    async def async_set_salt_low_alarm_enabled(self, enabled: bool) -> None:
+        await self.async_write_coil(COIL_SALT_LOW_ALARM_ENABLE, enabled)
+
+    async def async_set_salt_high_alarm_enabled(self, enabled: bool) -> None:
+        await self.async_write_coil(COIL_SALT_HIGH_ALARM_ENABLE, enabled)

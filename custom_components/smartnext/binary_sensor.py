@@ -11,6 +11,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .entity import SmartNextEntity
@@ -47,6 +48,8 @@ PROBLEM_SENSORS = (
     "salt_measure_unreliable",
     "salt_current_insufficient",
     "salt_voltage_insufficient",
+    "internal_air_bubble_detected",
+    "external_flow_switch_open",
 )
 
 BINARY_SENSORS: tuple[SmartNextBinarySensorDescription, ...] = tuple(
@@ -99,6 +102,24 @@ BINARY_SENSORS: tuple[SmartNextBinarySensorDescription, ...] = tuple(
         translation_key="ph_dosing_active",
         data_key="ph_dosing_active",
         device_class=BinarySensorDeviceClass.RUNNING,
+    ),
+    SmartNextBinarySensorDescription(
+        key="external_chlorine_control_input",
+        translation_key="external_chlorine_control_input",
+        data_key="external_chlorine_control_input",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SmartNextBinarySensorDescription(
+        key="internal_orp_control_stop",
+        translation_key="internal_orp_control_stop",
+        data_key="internal_orp_control_stop",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SmartNextBinarySensorDescription(
+        key="external_control_stop",
+        translation_key="external_control_stop",
+        data_key="external_control_stop",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
 

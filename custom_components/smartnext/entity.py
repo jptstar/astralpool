@@ -16,10 +16,17 @@ class SmartNextEntity(CoordinatorEntity[SmartNextCoordinator]):
 
     def __init__(self, coordinator: SmartNextCoordinator, entry_id: str, host: str) -> None:
         super().__init__(coordinator)
-        self._attr_device_info = DeviceInfo(
+        device_info = DeviceInfo(
             identifiers={(DOMAIN, entry_id)},
             manufacturer=MANUFACTURER,
             model=MODEL,
             name="SmartNext",
             configuration_url=f"http://{host}",
         )
+        if firmware_version := coordinator.data.get("firmware_version"):
+            device_info["sw_version"] = str(firmware_version)
+        if hardware_version := coordinator.data.get("hardware_version"):
+            device_info["hw_version"] = str(hardware_version)
+        if serial_number := coordinator.data.get("serial_number"):
+            device_info["serial_number"] = str(serial_number)
+        self._attr_device_info = device_info

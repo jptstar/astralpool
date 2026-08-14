@@ -38,6 +38,12 @@
   },
   "entity": {
     "sensor": {
+      "electrolysis_rated_capacity": {
+        "name": "Capacité nominale d’électrolyse"
+      },
+      "boost_remaining_time": {
+        "name": "Temps Boost restant"
+      },
       "temperature": {
         "name": "Température de l’eau"
       },
@@ -108,6 +114,12 @@
       },
       "external_flow_switch_alarm": {
         "name": "Alarme du détecteur de débit externe"
+      },
+      "internal_air_bubble_detected": {
+        "name": "Bulle d’air interne détectée"
+      },
+      "external_flow_switch_open": {
+        "name": "Détecteur de débit externe ouvert"
       },
       "electrolysis_check_cell_alarm": {
         "name": "Alarme de contrôle de la cellule"
@@ -189,6 +201,15 @@
       },
       "biopool_mode": {
         "name": "Mode Biopool"
+      },
+      "external_chlorine_control_input": {
+        "name": "Entrée de contrôle chlore externe"
+      },
+      "internal_orp_control_stop": {
+        "name": "Arrêt par régulation ORP interne"
+      },
+      "external_control_stop": {
+        "name": "Arrêt par régulation externe"
       }
     },
     "number": {
@@ -223,6 +244,53 @@
           "seconds_120": "120 secondes",
           "seconds_240": "240 secondes"
         }
+      },
+      "polarity_reversal_period": {
+        "name": "Période d’inversion de polarité de l’électrolyse",
+        "state": {
+          "hours_2": "2 heures",
+          "hours_3": "3 heures",
+          "hours_4": "4 heures",
+          "hours_7": "7 heures"
+        }
+      }
+    },
+    "switch": {
+      "boost_mode": {
+        "name": "Mode Boost"
+      },
+      "cover_control_enabled": {
+        "name": "Contrôle par couverture"
+      },
+      "internal_orp_control_enabled": {
+        "name": "Régulation ORP interne"
+      },
+      "external_chlorine_control_enabled": {
+        "name": "Régulation chlore externe"
+      },
+      "internal_flow_sensor_enabled": {
+        "name": "Détecteur de débit interne"
+      },
+      "external_flow_sensor_enabled": {
+        "name": "Détecteur de débit externe"
+      },
+      "ph_intelligent_dosing_enabled": {
+        "name": "Dosage pH intelligent"
+      },
+      "ph_pump_stop_enabled": {
+        "name": "Protection PumpStop pH"
+      },
+      "temperature_low_alarm_enabled": {
+        "name": "Activation de l’alarme de température basse"
+      },
+      "temperature_high_alarm_enabled": {
+        "name": "Activation de l’alarme de température élevée"
+      },
+      "salt_low_alarm_enabled": {
+        "name": "Activation de l’alarme de salinité basse"
+      },
+      "salt_high_alarm_enabled": {
+        "name": "Activation de l’alarme de salinité élevée"
       }
     },
     "button": {
