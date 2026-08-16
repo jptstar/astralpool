@@ -38,7 +38,7 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         data_key="cover_control_enabled",
         setter_name="async_set_cover_control_enabled",
         entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=False,
+        entity_registry_enabled_default=True,
     ),
     SmartNextSwitchDescription(
         key="internal_orp_control_enabled",
@@ -46,7 +46,7 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         data_key="internal_orp_control_enabled",
         setter_name="async_set_internal_orp_control_enabled",
         entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=False,
+        entity_registry_enabled_default=True,
     ),
     SmartNextSwitchDescription(
         key="external_chlorine_control_enabled",
@@ -54,7 +54,7 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         data_key="external_chlorine_control_enabled",
         setter_name="async_set_external_chlorine_control_enabled",
         entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=False,
+        entity_registry_enabled_default=True,
     ),
     SmartNextSwitchDescription(
         key="internal_flow_sensor_enabled",
@@ -62,7 +62,7 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         data_key="internal_flow_sensor_enabled",
         setter_name="async_set_internal_flow_sensor_enabled",
         entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=False,
+        entity_registry_enabled_default=True,
     ),
     SmartNextSwitchDescription(
         key="external_flow_sensor_enabled",
@@ -70,7 +70,7 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         data_key="external_flow_sensor_enabled",
         setter_name="async_set_external_flow_sensor_enabled",
         entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=False,
+        entity_registry_enabled_default=True,
     ),
     SmartNextSwitchDescription(
         key="ph_intelligent_dosing_enabled",
@@ -78,7 +78,7 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         data_key="ph_intelligent_dosing_enabled",
         setter_name="async_set_ph_intelligent_dosing_enabled",
         entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=False,
+        entity_registry_enabled_default=True,
     ),
     SmartNextSwitchDescription(
         key="ph_pump_stop_enabled",
@@ -86,7 +86,7 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         data_key="ph_pump_stop_enabled",
         setter_name="async_set_ph_pump_stop_enabled",
         entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=False,
+        entity_registry_enabled_default=True,
     ),
     SmartNextSwitchDescription(
         key="temperature_low_alarm_enabled",
@@ -94,7 +94,7 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         data_key="temperature_low_alarm_enabled",
         setter_name="async_set_temperature_low_alarm_enabled",
         entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=False,
+        entity_registry_enabled_default=True,
     ),
     SmartNextSwitchDescription(
         key="temperature_high_alarm_enabled",
@@ -102,7 +102,7 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         data_key="temperature_high_alarm_enabled",
         setter_name="async_set_temperature_high_alarm_enabled",
         entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=False,
+        entity_registry_enabled_default=True,
     ),
     SmartNextSwitchDescription(
         key="salt_low_alarm_enabled",
@@ -110,7 +110,7 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         data_key="salt_low_alarm_enabled",
         setter_name="async_set_salt_low_alarm_enabled",
         entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=False,
+        entity_registry_enabled_default=True,
     ),
     SmartNextSwitchDescription(
         key="salt_high_alarm_enabled",
@@ -118,7 +118,7 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         data_key="salt_high_alarm_enabled",
         setter_name="async_set_salt_high_alarm_enabled",
         entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=False,
+        entity_registry_enabled_default=True,
     ),
 )
 

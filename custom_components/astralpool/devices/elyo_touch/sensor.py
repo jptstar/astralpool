@@ -27,7 +27,7 @@ SENSORS = (
     ElyoTouchSensorDescription(key="compressor_starts", translation_key="compressor_starts", data_key="compressor_starts", state_class=SensorStateClass.TOTAL_INCREASING, entity_category=EntityCategory.DIAGNOSTIC),
     ElyoTouchSensorDescription(key="product_code", translation_key="product_code", data_key="product_code", entity_category=EntityCategory.DIAGNOSTIC),
 ) + tuple(
-    ElyoTouchSensorDescription(key=f"alarm_count_{key}", translation_key=f"alarm_count_{key}", data_key=f"alarm_count_{key}", state_class=SensorStateClass.TOTAL_INCREASING, entity_category=EntityCategory.DIAGNOSTIC, entity_registry_enabled_default=False)
+    ElyoTouchSensorDescription(key=f"alarm_count_{key}", translation_key=f"alarm_count_{key}", data_key=f"alarm_count_{key}", state_class=SensorStateClass.TOTAL_INCREASING, entity_category=EntityCategory.DIAGNOSTIC, entity_registry_enabled_default=True)
     for key in ALARM_KEYS
 )
 
