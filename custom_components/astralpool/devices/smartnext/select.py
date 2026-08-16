@@ -77,7 +77,7 @@ class SmartNextPolarityReversalSelect(SmartNextEntity, SelectEntity):
     _attr_translation_key = "polarity_reversal_period"
     _attr_options = list(POLARITY_OPTIONS_TO_HOURS)
     _attr_entity_category = EntityCategory.CONFIG
-    _attr_entity_registry_enabled_default = False
+    _attr_entity_registry_enabled_default = True
 
     def __init__(self, coordinator, entry_id: str, host: str) -> None:
         super().__init__(coordinator, entry_id, host)
