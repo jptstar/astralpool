@@ -1,4 +1,4 @@
-"""Behavior tests for the SmartNext Modbus API without Home Assistant."""
+"""Behavior tests for the Smart Next Modbus API without Home Assistant."""
 
 import asyncio
 import importlib.util
@@ -9,7 +9,7 @@ import types
 
 def _load_api_module():
     package_name = "smartnext_protocol_test"
-    package_path = Path("custom_components/smartnext").resolve()
+    package_path = Path("custom_components/astralpool/devices/smartnext").resolve()
 
     package = types.ModuleType(package_name)
     package.__path__ = [str(package_path)]

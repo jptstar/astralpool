@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Final
 
-DOMAIN: Final = "smartnext"
+DOMAIN: Final = "astralpool"
 
 CONF_UNIT_ID: Final = "unit_id"
 CONF_RECONNECT_DELAY: Final = "reconnect_delay"

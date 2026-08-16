@@ -1,4 +1,4 @@
-"""Diagnostics support for SmartNext."""
+"""Diagnostics support for AstralPool."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant,
     entry: ConfigEntry,
 ) -> dict:
-    """Return diagnostics for a config entry."""
+    """Return diagnostics for an AstralPool config entry."""
     coordinator = entry.runtime_data
     return {
         "config_entry": async_redact_data(dict(entry.data), TO_REDACT),

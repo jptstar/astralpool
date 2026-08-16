@@ -1,203 +1,61 @@
-# SmartNext for Home Assistant
+# AstralPool for Home Assistant
 
-<p align="center">
-  <img src="brand/logo.png" alt="SmartNext for Home Assistant" width="240">
-</p>
+Local Modbus integration for supported AstralPool pool equipment.
 
-[![GitHub Release](https://img.shields.io/github/v/release/jptstar/astralpool_smartnext)](https://github.com/jptstar/astralpool_smartnext/releases)
+This repository combines the former Smart Next and Pro Elyo Touch integrations under a single Home Assistant domain: `astralpool`.
 
-> **Unofficial project** — This independent community integration was created for fun and for my own Home Assistant installation. It is not developed, approved, endorsed, or maintained by AstralPool or Fluidra, and is not affiliated with either company. AstralPool, Fluidra, Smart Next, and their product names and trademarks remain the property of their respective owners. Support requests for this integration must be directed to its author through GitHub, not to AstralPool or Fluidra.
+## Supported devices
 
-Custom Home Assistant integration for an **AstralPool Smart Next** pool controller connected through a **separate external Modbus RTU-to-TCP gateway**.
+| Device | Default Modbus Unit ID | Home Assistant platforms |
+| --- | ---: | --- |
+| AstralPool Smart Next | 2 | Sensors, binary sensors, numbers, selects, switches, buttons |
+| AstralPool Pro Elyo Touch | 9 | Climate, sensors, binary sensors, time controls |
 
-> **Hardware required separately:** the Smart Next does not include an Ethernet/Modbus TCP interface. A compatible RS-485 **Modbus RTU-to-TCP converter must be purchased, powered, wired and configured separately**. The converter is not supplied with the Smart Next and is not part of this software integration.
+Both devices use Modbus RTU and require an external Modbus RTU-to-TCP gateway. The integration polls locally and does not require a cloud account.
 
-The register map in version 0.2.15 has been reconciled against the supplied **Modbus protocol v1.70** spreadsheet.
+## Setup
 
-## About this project
+1. Install the repository as a custom integration with HACS.
+2. Restart Home Assistant.
+3. Open **Settings → Devices & services → Add integration → AstralPool**.
+4. Choose **Smart Next** or **Pro Elyo Touch**.
+5. Enter the gateway IP address, TCP port and Modbus Unit ID.
+6. The integration validates the selected device with a real Modbus read before creating the config entry.
 
-I originally developed this integration for fun and for my own Home Assistant installation. I am sharing it so other Smart Next owners can benefit from local access to their controller. This remains a personal hobby project, so support and updates are provided on a best-effort basis.
+The device type is selected for every config entry, so one Home Assistant installation can contain several Smart Next and Pro Elyo Touch devices at the same time.
 
-**Author:** Jean-Philippe TESTART ([@jptstar](https://github.com/jptstar))
+## Architecture
 
-**License:** [MIT](LICENSE)
+The Home Assistant domain is `astralpool`. Device-specific Modbus maps remain isolated under:
 
-## Configuration
+- `custom_components/astralpool/devices/smartnext`
+- `custom_components/astralpool/devices/elyo_touch`
 
-### Connection architecture
+The common config flow and setup layer select the appropriate driver and only load the platforms supported by that device.
 
-The Smart Next communicates over Modbus RTU / RS-485. It therefore requires a **separate hardware gateway**, installed between the Smart Next and the network. Home Assistant connects to that external gateway using Modbus TCP; the gateway converts each request to Modbus RTU:
+## Migration from the separate integrations
 
-`Home Assistant → Ethernet/Wi-Fi (Modbus TCP) → Waveshare gateway → RS-485 (Modbus RTU) → Smart Next`
+The previous integrations used the domains `smartnext` and `elyo_touch`. Home Assistant cannot automatically move a config entry from one domain to another. Before switching to this combined integration, note any entity IDs used by automations, remove the old custom integrations, restart Home Assistant, install AstralPool, and add each device again.
 
-This integration has been tested with a separately purchased [Waveshare RS485 TO ETH (B)](https://www.waveshare.com/rs485-to-eth-b.htm) gateway. This Waveshare module is independent from AstralPool/Fluidra and is not included with the Smart Next or with this integration. Other transparent Modbus RTU-to-TCP gateways may work but are not tested.
+After re-adding a device, verify entity IDs referenced by automations and dashboards.
 
-### Known-working Waveshare settings
+## Communication defaults
 
-These values reproduce the author's working installation. Replace the network addresses with values appropriate for your LAN.
-
-| Section | Setting | Value |
-|---|---|---|
-| Network | Work Mode | `TCP Server` |
-| Network | Device Port | `502` |
-| Network | IP Mode | `Static` recommended |
-| Serial | Baud rate | `9600` |
-| Serial | Data bits | `8` |
-| Serial | Parity | `Even` |
-| Serial | Stop bits | `1` |
-| Serial | Flow control | `None` |
-| Multi-host | Protocol | `Modbus TCP to RTU` |
-| Multi-host | Enable Multi-host | `Yes` |
-| Multi-host | Instruction timeout | `224 ms` |
-| Multi-host | RS485 conflict time gap | `20 ms` |
-
-Wire the Smart Next RS-485 bus to the gateway (`A` to `A`, `B` to `B`; connect the reference/GND conductor when required by the installation). If communication fails completely, check the documentation and the terminal labels before considering an A/B swap. Do not expose TCP port 502 to the Internet.
-
-The gateway's **Destination IP/DNS** and **Destination Port** are not used by Home Assistant while the gateway is operating as a TCP server. In the integration, enter the gateway's **Device IP**, not the Smart Next address.
-
-### Home Assistant setup
-
-Configuration is done from the Home Assistant UI:
-
-- gateway IP address / host
-- gateway TCP port (default `502`)
-- Smart Next Modbus Unit ID (default `2`)
-- timeout
-- reconnect delay
-- polling interval
-
-After setup, Unit ID, timeout, reconnect delay and polling interval can be changed from the integration's **Configure** dialog.
-
-## Verified Modbus v1.70 mapping
-
-### Measurements
-
-| Entity | Modbus point | Conversion |
-|---|---:|---:|
-| Water temperature | Input `0xB1` | signed INT16 / 10 |
-| Salt | Input `0xC1` | / 100 ppt |
-| pH | Input `0x51` | / 100 |
-| ORP | Input `0x81` | mV |
-| pH dosage elapsed time | Input `0x57` | minutes |
-| pH pump output | Input `0x58` | % |
-| Electrolysis functional target | Input `0x41` | % |
-| Electrolysis production | Input `0x42` | % |
-| Electrolysis current | Input `0x43` | / 100 A |
-| Electrolysis voltage | Input `0x44` | / 100 V |
-| Chlorine production | Input `0x45` | g/h |
-| Rated electrolysis capacity | Holding `0x05` | g/h |
-| Boost time remaining | Holding `0x44` | HH/MM converted to minutes |
-
-### Writable settings
-
-| Entity | Holding register | Range / conversion |
-|---|---:|---:|
-| Electrolysis normal production | `0x41` | 0-100 % |
-| Electrolysis cover production | `0x42` | 10-90 % |
-| pH initialization time | `0x55` | 0 / 60 / 120 / 240 s |
-| pH setpoint | `0x57` | x100 on write |
-| pH dosage time limit | `0x58` | minutes |
-| ORP setpoint | `0x87` | mV |
-| Low temperature threshold | `0xB2` | x10 on write |
-| High temperature threshold | `0xB3` | x10 on write |
-
-### Additional controls in v0.2.15
-
-The integration also exposes the following documented controls as Home Assistant
-switches or selects:
-
-- electrolysis Boost mode;
-- cover input control;
-- internal ORP regulation and external chlorine regulation;
-- internal and external flow-sensor enable states;
-- intelligent pH dosing and pH PumpStop protection;
-- low/high temperature and salinity alarm enable states;
-- electrolysis polarity-reversal period: 2, 3, 4 or 7 hours.
-
-Each boolean setting is written through its dedicated Modbus coil. The integration
-does not perform read-modify-write operations on the complete control words.
-Only Boost is enabled as an entity by default. The other advanced configuration
-entities can be enabled from the SmartNext device page when they are needed; this
-reduces the risk of accidentally disabling a treatment or safety function.
-
-### Standard / Biopool setpoint ranges
-
-The integration reads Holding Register `0x0D`, bit 9 (`0x0D9`) to detect Biopool mode
-and dynamically applies the protocol-valid setpoint ranges:
-
-- pH standard mode: `7.00` to `7.80`
-- pH Biopool mode: `6.50` to `8.50`
-- ORP standard mode: `600` to `850 mV`
-- ORP Biopool mode: `300` to `850 mV`
-
-The current Biopool state is also exposed as a binary sensor.
-
-### Read-only salt thresholds
-
-Protocol v1.70 moved the salt thresholds to:
-
-- Low salt threshold: Holding `0xC2`
-- High salt threshold: Holding `0xC3`
-
-They are documented as **not editable via Modbus**, so the integration exposes them as sensors only.
-
-### Alarm and status inputs
-
-The integration exposes the documented alarm groups for flow, electrolysis, pH,
-ORP, temperature and salt, plus measurement-quality states, raw internal/external
-flow states, electrolysis stop causes, electrolysis running/polarity, cover status
-and pH dosing status. Hardware version, firmware version and serial number are
-included in the Home Assistant device information.
-
-### Clearer entity organization in v0.2.16
-
-The device page now uses Home Assistant's native sections more consistently:
-
-- day-to-day actions and setpoints stay under **Controls**;
-- live measurements and operating states stay under **Sensors**;
-- advanced enable/disable settings stay under **Configuration**;
-- alarms, raw states, lifetime counters and read-only threshold copies move to
-  **Diagnostic**.
-
-Within each section, translated names use a stable subsystem prefix such as
-`Electrolysis ·`, `Flow ·`, `ORP ·`, `pH ·`, `Salinity ·` or `Temperature ·`.
-Unique IDs and existing entity IDs are unchanged.
-
-Important corrections from the verified table:
-
-- `0x242` is the external/inductive flow-switch alarm.
-- `0x250`, `0x251`, `0x252` are Check Cell, Low Conductivity and High Conductivity.
-- Coil `0x56D` rearms the pH pump-stop; it is not a global alarm-reset coil.
-
-Calibration commands, factory/configuration resets, communication settings,
-watchdog settings and test mode are intentionally not exposed. They are maintenance
-operations and an accidental write could disrupt treatment or communication.
-
-## Installation with HACS
-
-[![Add SmartNext to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jptstar&repository=astralpool_smartnext&category=integration)
-
-1. Add `https://github.com/jptstar/astralpool_smartnext` to HACS as a custom **Integration** repository.
-2. Install **SmartNext**.
-3. Restart Home Assistant.
-4. Settings → Devices & services → Add integration → **SmartNext**.
-
-## Default communication settings
-
-- Gateway port: `502`
-- Smart Next Unit ID: `2`
+- TCP port: `502`
 - Timeout: `5 s`
 - Reconnect delay: `10 s`
 - Polling interval: `5 s`
+- Smart Next Unit ID: `2`
+- Pro Elyo Touch Unit ID: `9`
 
-Keep the polling interval at `5 s` or higher when several TCP clients share the RS-485 bus. The gateway serializes all requests onto the single RTU link; aggressive polling or simultaneous masters can cause timeouts and collisions.
+These values can be adjusted from the integration options where applicable.
 
-## Entity language
+## Requirements
 
-Entity names and the pH initialization choices are available in **English and French** and follow the language selected in Home Assistant. Existing user-defined entity names are never overwritten.
+- Home Assistant with custom integrations enabled
+- `pymodbus==3.13.1` (installed automatically from the manifest)
+- A correctly configured Modbus RTU-to-TCP gateway
 
-## Support and trademarks
+## License
 
-Use the [GitHub issue tracker](https://github.com/jptstar/astralpool_smartnext/issues) for integration support. Do not contact AstralPool or Fluidra about this software.
-
-The license covers only this independent implementation. It grants no rights to AstralPool or Fluidra trademarks, logos, software, documentation, or products. This project remains unofficial and unaffiliated with AstralPool and Fluidra.
+MIT

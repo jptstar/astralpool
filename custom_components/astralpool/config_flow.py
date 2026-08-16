@@ -1,4 +1,4 @@
-"""Config flow for SmartNext."""
+"""Config flow for AstralPool devices."""
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ from homeassistant.helpers.selector import (
     NumberSelectorMode,
 )
 
-from .api import SmartNextApi, SmartNextCommunicationError
 from .const import (
+    CONF_DEVICE_TYPE,
     CONF_RECONNECT_DELAY,
     CONF_SCAN_INTERVAL,
     CONF_UNIT_ID,
@@ -23,11 +23,16 @@ from .const import (
     DEFAULT_RECONNECT_DELAY,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TIMEOUT,
-    DEFAULT_UNIT_ID,
+    DEFAULT_UNIT_IDS,
+    DEVICE_NAMES,
+    DEVICE_TYPE_ELYO_TOUCH,
+    DEVICE_TYPE_SMARTNEXT,
     DOMAIN,
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
 )
+from .devices.elyo_touch.api import ElyoTouchApi, ElyoTouchCommunicationError
+from .devices.smartnext.api import SmartNextApi, SmartNextCommunicationError
 
 _UNIT_ID_SELECTOR = vol.All(
     NumberSelector(
@@ -42,18 +47,17 @@ _UNIT_ID_SELECTOR = vol.All(
 )
 
 
-def _schema(defaults: dict | None = None) -> vol.Schema:
+def _connection_schema(device_type: str, defaults: dict | None = None) -> vol.Schema:
     defaults = defaults or {}
     return vol.Schema(
         {
-            vol.Required(
-                CONF_HOST, default=defaults.get(CONF_HOST, "")
-            ): str,
+            vol.Required(CONF_HOST, default=defaults.get(CONF_HOST, "")): str,
             vol.Required(
                 CONF_PORT, default=defaults.get(CONF_PORT, DEFAULT_PORT)
             ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
             vol.Required(
-                CONF_UNIT_ID, default=defaults.get(CONF_UNIT_ID, DEFAULT_UNIT_ID)
+                CONF_UNIT_ID,
+                default=defaults.get(CONF_UNIT_ID, DEFAULT_UNIT_IDS[device_type]),
             ): _UNIT_ID_SELECTOR,
             vol.Required(
                 CONF_TIMEOUT, default=defaults.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
@@ -73,8 +77,9 @@ def _schema(defaults: dict | None = None) -> vol.Schema:
     )
 
 
-async def _test_connection(data: dict) -> None:
-    api = SmartNextApi(
+async def _test_connection(device_type: str, data: dict) -> None:
+    api_class = SmartNextApi if device_type == DEVICE_TYPE_SMARTNEXT else ElyoTouchApi
+    api = api_class(
         host=data[CONF_HOST],
         port=data[CONF_PORT],
         timeout=data[CONF_TIMEOUT],
@@ -83,23 +88,49 @@ async def _test_connection(data: dict) -> None:
     )
     try:
         await api.async_connect()
-        # A real read validates both TCP connectivity and the selected Unit ID.
         await api.async_read_all()
     finally:
         await api.async_close()
 
 
-class SmartNextConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for SmartNext."""
+class AstralPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle an AstralPool config flow."""
 
     VERSION = 1
 
-    async def async_step_user(self, user_input=None) -> ConfigFlowResult:
-        """Handle initial setup."""
-        errors: dict[str, str] = {}
+    def __init__(self) -> None:
+        self._device_type: str | None = None
 
+    async def async_step_user(self, user_input=None) -> ConfigFlowResult:
+        """Select the AstralPool device family."""
         if user_input is not None:
+            self._device_type = user_input[CONF_DEVICE_TYPE]
+            return await self.async_step_connection()
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_DEVICE_TYPE): vol.In(
+                        {
+                            DEVICE_TYPE_SMARTNEXT: DEVICE_NAMES[DEVICE_TYPE_SMARTNEXT],
+                            DEVICE_TYPE_ELYO_TOUCH: DEVICE_NAMES[DEVICE_TYPE_ELYO_TOUCH],
+                        }
+                    )
+                }
+            ),
+        )
+
+    async def async_step_connection(self, user_input=None) -> ConfigFlowResult:
+        """Configure and validate the selected device."""
+        if self._device_type is None:
+            return await self.async_step_user()
+
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            data = {CONF_DEVICE_TYPE: self._device_type, **user_input}
             unique_id = (
+                f"{self._device_type}:"
                 f"{user_input[CONF_HOST]}:"
                 f"{user_input[CONF_PORT]}:"
                 f"{user_input[CONF_UNIT_ID]}"
@@ -108,38 +139,44 @@ class SmartNextConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
 
             try:
-                await _test_connection(user_input)
-            except (SmartNextCommunicationError, OSError, TimeoutError):
+                await _test_connection(self._device_type, user_input)
+            except (
+                SmartNextCommunicationError,
+                ElyoTouchCommunicationError,
+                OSError,
+                TimeoutError,
+            ):
                 errors["base"] = "cannot_connect"
             except Exception:  # noqa: BLE001
                 errors["base"] = "unknown"
             else:
                 return self.async_create_entry(
-                    title=f"SmartNext {user_input[CONF_HOST]}",
-                    data=user_input,
+                    title=f"{DEVICE_NAMES[self._device_type]} {user_input[CONF_HOST]}",
+                    data=data,
                 )
 
         return self.async_show_form(
-            step_id="user",
-            data_schema=_schema(user_input),
+            step_id="connection",
+            data_schema=_connection_schema(self._device_type, user_input),
             errors=errors,
+            description_placeholders={"device_name": DEVICE_NAMES[self._device_type]},
         )
 
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
         """Return the options flow."""
-        return SmartNextOptionsFlow(config_entry)
+        return AstralPoolOptionsFlow(config_entry)
 
 
-class SmartNextOptionsFlow(config_entries.OptionsFlow):
-    """Handle runtime-tunable SmartNext options."""
+class AstralPoolOptionsFlow(config_entries.OptionsFlow):
+    """Handle runtime-tunable AstralPool options."""
 
     def __init__(self, config_entry) -> None:
         self._config_entry = config_entry
 
     async def async_step_init(self, user_input=None) -> ConfigFlowResult:
-        """Manage SmartNext options."""
+        """Manage communication options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
@@ -179,10 +216,7 @@ class SmartNextOptionsFlow(config_entries.OptionsFlow):
                         default=defaults[CONF_SCAN_INTERVAL],
                     ): vol.All(
                         vol.Coerce(int),
-                        vol.Range(
-                            min=MIN_SCAN_INTERVAL,
-                            max=MAX_SCAN_INTERVAL,
-                        ),
+                        vol.Range(min=MIN_SCAN_INTERVAL, max=MAX_SCAN_INTERVAL),
                     ),
                 }
             ),

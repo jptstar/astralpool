@@ -1,0 +1,5 @@
+"""Number platform for AstralPool Smart Next."""
+
+from .devices.smartnext.number import async_setup_entry
+
+__all__ = ["async_setup_entry"]
