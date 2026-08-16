@@ -6,6 +6,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_TIMEOUT
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.entity_registry import RegistryEntryDisabler
 
 from .const import (
     CONF_DEVICE_TYPE,
@@ -26,6 +28,16 @@ from .devices.smartnext.coordinator import SmartNextCoordinator
 
 type AstralPoolCoordinator = SmartNextCoordinator | ElyoTouchCoordinator
 type AstralPoolConfigEntry = ConfigEntry[AstralPoolCoordinator]
+
+
+def _async_enable_integration_disabled_entities(
+    hass: HomeAssistant, entry: AstralPoolConfigEntry
+) -> None:
+    """Enable entities that were disabled only by AstralPool defaults."""
+    registry = er.async_get(hass)
+    for registry_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if registry_entry.disabled_by == RegistryEntryDisabler.INTEGRATION:
+            registry.async_update_entity(registry_entry.entity_id, disabled_by=None)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: AstralPoolConfigEntry) -> bool:
@@ -76,6 +88,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: AstralPoolConfigEntry) -
 
     entry.runtime_data = coordinator
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
+
+    _async_enable_integration_disabled_entities(hass, entry)
 
     await hass.config_entries.async_forward_entry_setups(
         entry, PLATFORMS_BY_DEVICE_TYPE[device_type]
