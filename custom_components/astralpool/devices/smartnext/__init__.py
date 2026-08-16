@@ -1,0 +1,1 @@
+"""Smart Next device implementation."""

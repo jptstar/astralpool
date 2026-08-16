@@ -4,31 +4,25 @@ import ast
 from pathlib import Path
 
 
+FLOW = Path("custom_components/astralpool/config_flow.py")
+
+
 def test_config_flow_uses_current_result_type() -> None:
     """Prevent reintroducing the removed data_entry_flow.FlowResult import."""
-    source = Path("custom_components/smartnext/config_flow.py").read_text(
-        encoding="utf-8"
-    )
-    tree = ast.parse(source)
-
+    tree = ast.parse(FLOW.read_text(encoding="utf-8"))
     imports = {
         (node.module, alias.name)
         for node in ast.walk(tree)
         if isinstance(node, ast.ImportFrom)
         for alias in node.names
     }
-
     assert ("homeassistant.config_entries", "ConfigFlowResult") in imports
     assert ("homeassistant.data_entry_flow", "FlowResult") not in imports
 
 
 def test_unit_id_uses_a_numeric_box_selector() -> None:
     """Keep the Modbus Unit ID as a numeric box instead of a slider."""
-    source = Path("custom_components/smartnext/config_flow.py").read_text(
-        encoding="utf-8"
-    )
-    tree = ast.parse(source)
-
+    tree = ast.parse(FLOW.read_text(encoding="utf-8"))
     selector_imports = {
         alias.name
         for node in ast.walk(tree)
@@ -44,10 +38,18 @@ def test_unit_id_uses_a_numeric_box_selector() -> None:
         and node.value.id == "NumberSelectorMode"
         and node.attr == "BOX"
     ]
-
-    assert {
-        "NumberSelector",
-        "NumberSelectorConfig",
-        "NumberSelectorMode",
-    } <= selector_imports
+    assert {"NumberSelector", "NumberSelectorConfig", "NumberSelectorMode"} <= selector_imports
     assert box_modes
+
+
+def test_device_selection_precedes_connection_step() -> None:
+    """Require a device choice before Modbus connection parameters are shown."""
+    source = FLOW.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    functions = {
+        node.name for node in ast.walk(tree) if isinstance(node, ast.AsyncFunctionDef)
+    }
+    assert {"async_step_user", "async_step_connection"} <= functions
+    assert "CONF_DEVICE_TYPE" in source
+    assert "DEVICE_TYPE_SMARTNEXT" in source
+    assert "DEVICE_TYPE_ELYO_TOUCH" in source
