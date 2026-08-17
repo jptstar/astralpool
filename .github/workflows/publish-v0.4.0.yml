@@ -1,0 +1,25 @@
+name: Publish AstralPool v0.4.0
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/publish-v0.4.0.yml
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create v0.4.0 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v0.4.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v0.4.0 already exists"
+            exit 0
+          fi
+          gh release create v0.4.0 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "AstralPool v0.4.0" --notes "Smart Next parameter expansion: all verified user settings are exposed in Home Assistant and enabled by default. Adds software 2.00 conductivity threshold support with automatic v1.70/v2.00 layout detection, Bio pool and ECO controls, pH/ORP alarm-limit diagnostics, firmware 2.00 decoding, and corrected Flow Cell / Flow, Cl mV auto / Cl EXT auto and Pump Stop labels. Calibration and unsafe maintenance/reset commands remain intentionally excluded for now."
