@@ -20,7 +20,7 @@ def _constant_values() -> dict[str, object]:
     return values
 
 
-def test_v170_safe_control_coil_addresses() -> None:
+def test_safe_control_coil_addresses() -> None:
     constants = _constant_values()
     assert constants["COIL_FLOW_INTERNAL_SENSOR_ENABLE"] == 0x300
     assert constants["COIL_FLOW_EXTERNAL_SENSOR_ENABLE"] == 0x301
@@ -32,9 +32,11 @@ def test_v170_safe_control_coil_addresses() -> None:
     assert constants["COIL_ELECTROLYSIS_POLARITY_PERIOD_HIGH"] == 0x40A
     assert constants["COIL_PH_INTELLIGENT_DOSING_ENABLE"] == 0x566
     assert constants["COIL_PH_PUMP_STOP_ENABLE"] == 0x56C
+    assert constants["COIL_BIOPOOL_MODE_ENABLE"] == 0x0D9
+    assert constants["COIL_ECO_MODE_ENABLE"] == 0x230B
 
 
-def test_v170_diagnostic_register_addresses() -> None:
+def test_diagnostic_and_alarm_limit_register_addresses() -> None:
     constants = _constant_values()
     assert constants["HR_PRODUCT_CAPACITY"] == 0x05
     assert constants["HR_HARDWARE_VERSION"] == 0x07
@@ -43,6 +45,14 @@ def test_v170_diagnostic_register_addresses() -> None:
     assert constants["HR_SERIAL_MIDDLE"] == 0x0A
     assert constants["HR_SERIAL_LOW"] == 0x0B
     assert constants["HR_ELECTROLYSIS_BOOST_REMAINING"] == 0x44
+    assert constants["HR_PH_LOW_ALARM_LIMIT"] == 0x51
+    assert constants["HR_PH_HIGH_ALARM_LIMIT"] == 0x52
+    assert constants["HR_ORP_LOW_ALARM_LIMIT"] == 0x81
+    assert constants["HR_ORP_HIGH_ALARM_LIMIT"] == 0x82
+    assert constants["HR_SALT_MIN_V170"] == 0xC2
+    assert constants["HR_SALT_MAX_V170"] == 0xC3
+    assert constants["HR_SALT_MIN_V200"] == 0xC1
+    assert constants["HR_SALT_MAX_V200"] == 0xC2
     assert constants["DI_FLOW_INTERNAL_STATUS"] == 0x300
     assert constants["DI_FLOW_EXTERNAL_STATUS"] == 0x302
     assert constants["DI_ELECTROLYSIS_EXTERNAL_CONTROL_INPUT"] == 0x404

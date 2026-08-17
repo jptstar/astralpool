@@ -120,6 +120,22 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=True,
     ),
+    SmartNextSwitchDescription(
+        key="biopool_mode_control",
+        translation_key="biopool_mode_control",
+        data_key="biopool_mode",
+        setter_name="async_set_biopool_mode",
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=True,
+    ),
+    SmartNextSwitchDescription(
+        key="eco_mode",
+        translation_key="eco_mode",
+        data_key="eco_mode",
+        setter_name="async_set_eco_mode",
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=True,
+    ),
 )
 
 
@@ -150,6 +166,11 @@ class SmartNextSwitch(SmartNextEntity, SwitchEntity):
         super().__init__(coordinator, entry_id, host)
         self.entity_description = description
         self._attr_unique_id = f"{entry_id}_{description.key}"
+
+    @property
+    def available(self) -> bool:
+        """Return False when an optional firmware setting is not exposed."""
+        return super().available and self.entity_description.data_key in self.coordinator.data
 
     @property
     def is_on(self) -> bool:

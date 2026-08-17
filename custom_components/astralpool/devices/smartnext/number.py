@@ -9,6 +9,7 @@ from homeassistant.components.number import NumberEntity, NumberEntityDescriptio
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .entity import SmartNextEntity
@@ -34,6 +35,7 @@ NUMBERS: tuple[SmartNextNumberDescription, ...] = (
         native_max_value=60,
         native_step=0.1,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_category=EntityCategory.CONFIG,
     ),
     SmartNextNumberDescription(
         key="temperature_max_setpoint",
@@ -44,6 +46,29 @@ NUMBERS: tuple[SmartNextNumberDescription, ...] = (
         native_max_value=60,
         native_step=0.1,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    SmartNextNumberDescription(
+        key="salt_min_setpoint",
+        translation_key="salt_min_setpoint",
+        data_key="salt_min",
+        setter_name="async_set_salt_min",
+        native_min_value=0,
+        native_max_value=20,
+        native_step=0.01,
+        native_unit_of_measurement="g/L",
+        entity_category=EntityCategory.CONFIG,
+    ),
+    SmartNextNumberDescription(
+        key="salt_max_setpoint",
+        translation_key="salt_max_setpoint",
+        data_key="salt_max",
+        setter_name="async_set_salt_max",
+        native_min_value=0,
+        native_max_value=20,
+        native_step=0.01,
+        native_unit_of_measurement="g/L",
+        entity_category=EntityCategory.CONFIG,
     ),
     SmartNextNumberDescription(
         key="ph_setpoint",
@@ -63,6 +88,7 @@ NUMBERS: tuple[SmartNextNumberDescription, ...] = (
         native_max_value=120,
         native_step=1,
         native_unit_of_measurement=UnitOfTime.MINUTES,
+        entity_category=EntityCategory.CONFIG,
     ),
     SmartNextNumberDescription(
         key="orp_setpoint",
@@ -93,6 +119,7 @@ NUMBERS: tuple[SmartNextNumberDescription, ...] = (
         native_max_value=90,
         native_step=1,
         native_unit_of_measurement=PERCENTAGE,
+        entity_category=EntityCategory.CONFIG,
     ),
 )
 

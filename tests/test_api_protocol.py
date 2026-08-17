@@ -41,19 +41,23 @@ def _load_api_module():
     return sys.modules[f"{package_name}.api"]
 
 
-def test_read_all_decodes_v0215_points() -> None:
+def test_read_all_decodes_verified_software_200_points() -> None:
     api_module = _load_api_module()
     api = api_module.SmartNextApi("127.0.0.1", 502, 5, 10, 2)
 
     holding = {
-        (0x04, 8): [0x50, 20, 0x233, 0x0100, 0x0170, 1, 2, 3],
+        (0x04, 8): [0x50, 12, 0x4037, 2, 200, 1, 2, 3],
         (0x0D, 1): [0x233],
-        (0x30, 1): [0b11],
+        (0x30, 1): [0b01],
         (0x40, 5): [(1 << 1) | (1 << 2) | (1 << 4) | (1 << 5) | (3 << 9), 70, 50, 0, 0x011E],
+        (0x51, 2): [650, 850],
         (0x55, 4): [60, (1 << 6) | (1 << 12), 740, 120],
+        (0x81, 2): [600, 855],
         (0x87, 1): [720],
         (0xB0, 4): [(1 << 11) | (1 << 12), 0, 100, 330],
-        (0xC0, 4): [(1 << 11) | (1 << 12), 0, 300, 800],
+        (0xC0, 1): [(1 << 11) | (1 << 12)],
+        (0xC1, 3): [250, 800, 0],
+        (0xC1, 2): [250, 800],
     }
     inputs = {
         (0x41, 5): [70, 65, 1741, 2450, 17],
@@ -63,7 +67,7 @@ def test_read_all_decodes_v0215_points() -> None:
         (0x5A, 2): [88, 12],
         (0x81, 1): [731],
         (0xB1, 1): [297],
-        (0xC1, 1): [365],
+        (0xC1, 1): [301],
     }
     discrete = {
         (0x200, 3): [True, False, False],
@@ -91,29 +95,58 @@ def test_read_all_decodes_v0215_points() -> None:
     async def read_discrete(address: int, count: int) -> list[bool]:
         return discrete[(address, count)]
 
+    async def read_coils(address: int, count: int) -> list[bool]:
+        assert (address, count) == (0x230B, 1)
+        return [True]
+
     api._read_holding_registers = read_holding
     api._read_input_registers = read_input
     api._read_discrete_inputs = read_discrete
+    api._read_coils = read_coils
     data = asyncio.run(api.async_read_all())
 
-    assert data["product_capacity"] == 20
-    assert data["hardware_version"] == "0x0100"
-    assert data["firmware_version"] == "0x0170"
+    assert data["product_capacity"] == 12
+    assert data["hardware_version"] == "0x0002"
+    assert data["firmware_version"] == "2.00"
+    assert data["firmware_version_raw"] == 200
     assert data["serial_number"] == "000100020003"
     assert data["boost_mode"] is True
     assert data["boost_remaining_time"] == 90
     assert data["polarity_reversal_period"] == 7
     assert data["internal_flow_sensor_enabled"] is True
-    assert data["external_flow_sensor_enabled"] is True
+    assert data["external_flow_sensor_enabled"] is False
     assert data["ph_intelligent_dosing_enabled"] is True
     assert data["ph_pump_stop_enabled"] is True
+    assert data["ph_low_alarm_limit"] == 6.5
+    assert data["ph_high_alarm_limit"] == 8.5
+    assert data["orp_low_alarm_limit"] == 600
+    assert data["orp_high_alarm_limit"] == 855
     assert data["internal_air_bubble_detected"] is True
     assert data["external_flow_switch_open"] is True
     assert data["external_chlorine_control_input"] is True
     assert data["internal_orp_control_stop"] is True
     assert data["external_control_stop"] is False
     assert data["temperature"] == 29.7
-    assert data["salt"] == 3.65
+    assert data["salt"] == 3.01
+    assert data["salt_min"] == 2.5
+    assert data["salt_max"] == 8.0
+    assert data["eco_mode"] is True
+
+
+def test_conductivity_layout_detection_supports_v170_and_v200() -> None:
+    api_module = _load_api_module()
+    detect = api_module.SmartNextApi._detect_salt_threshold_addresses
+    assert detect([250, 800, 0]) == (0xC1, 0xC2)
+    assert detect([0, 250, 800]) == (0xC2, 0xC3)
+
+
+def test_firmware_version_decoder_supports_decimal_and_legacy_encoding() -> None:
+    api_module = _load_api_module()
+    decode = api_module.SmartNextApi._decode_firmware_version
+    assert decode(170) == "1.70"
+    assert decode(200) == "2.00"
+    assert decode(0x0170) == "1.70"
+    assert decode(0x0200) == "2.00"
 
 
 def test_polarity_period_writes_only_its_two_documented_coils() -> None:
@@ -128,6 +161,21 @@ def test_polarity_period_writes_only_its_two_documented_coils() -> None:
     asyncio.run(api.async_set_polarity_reversal_period(7))
 
     assert writes == [(0x409, True), (0x40A, True)]
+
+
+def test_salt_limit_writes_follow_detected_layout() -> None:
+    api_module = _load_api_module()
+    api = api_module.SmartNextApi("127.0.0.1", 502, 5, 10, 2)
+    api._salt_threshold_addresses_cache = (0xC1, 0xC2)
+    writes: list[tuple[int, int]] = []
+
+    async def write_register(address: int, value: int) -> None:
+        writes.append((address, value))
+
+    api.async_write_register = write_register
+    asyncio.run(api.async_set_salt_min(2.5))
+    asyncio.run(api.async_set_salt_max(8.0))
+    assert writes == [(0xC1, 250), (0xC2, 800)]
 
 
 def test_identification_is_optional_for_older_firmware() -> None:

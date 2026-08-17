@@ -1,4 +1,4 @@
-"""Basic mapping and conversion tests for SmartNext v1.70."""
+"""Basic mapping and conversion tests for SmartNext."""
 
 
 def uint16_to_int16(value: int) -> int:
@@ -7,6 +7,10 @@ def uint16_to_int16(value: int) -> int:
 
 def combine_u32(lsb: int, msb: int) -> int:
     return (msb << 16) | lsb
+
+
+def decode_firmware_version(value: int) -> str:
+    return f"{value // 100}.{value % 100:02d}"
 
 
 def test_signed_temperature_conversion() -> None:
@@ -25,9 +29,16 @@ def test_32bit_hour_counter() -> None:
     assert combine_u32(0x0002, 0x0001) == 65538
 
 
-def test_v170_salt_threshold_addresses() -> None:
-    assert 0xC2 == 194
-    assert 0xC3 == 195
+def test_salt_threshold_addresses_by_firmware() -> None:
+    legacy_v170 = (0xC2, 0xC3)
+    verified_v200 = (0xC1, 0xC2)
+    assert legacy_v170 == (194, 195)
+    assert verified_v200 == (193, 194)
+
+
+def test_decimal_firmware_version_conversion() -> None:
+    assert decode_firmware_version(170) == "1.70"
+    assert decode_firmware_version(200) == "2.00"
 
 
 def test_ph_pump_stop_reset_address() -> None:
