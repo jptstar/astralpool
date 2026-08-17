@@ -84,7 +84,7 @@ class ElyoTouchClimate(ElyoTouchEntity, ClimateEntity):
 
     @property
     def preset_mode(self):
-        """Return the active inverter mode from Status bits 9-11."""
+        """Return the selected/memorized inverter preset from Control Word."""
         return self.coordinator.data.get("preset_mode")
 
     @property

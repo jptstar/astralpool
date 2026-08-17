@@ -9,6 +9,12 @@ from pymodbus.exceptions import ModbusException
 
 from .const import (
     ALARM_KEYS,
+    COIL_HVAC_MODE_BIT1,
+    COIL_HVAC_MODE_BIT2,
+    COIL_POWER,
+    COIL_PRESET_BIT10,
+    COIL_PRESET_BIT11,
+    COIL_PRESET_BIT9,
     HR_ALARM_COUNTERS_COUNT,
     HR_ALARM_COUNTERS_START,
     HR_COMPRESSOR_STARTS,
@@ -135,6 +141,20 @@ class ElyoTouchApi:
                 raise ElyoTouchCommunicationError(str(err)) from err
             self._check(response, f"writing holding register {address}")
 
+    async def _write_coil(self, address: int, value: bool) -> None:
+        """Write one documented bit-addressable Pro Elyo control."""
+        async with self._lock:
+            await self._ensure()
+            try:
+                response = await self._client.write_coil(
+                    address,
+                    value,
+                    device_id=self.unit_id,
+                )
+            except (OSError, ModbusException) as err:
+                raise ElyoTouchCommunicationError(str(err)) from err
+            self._check(response, f"writing coil {address}")
+
     @staticmethod
     def _s16(value: int) -> int:
         return value - 0x10000 if value & 0x8000 else value
@@ -200,13 +220,6 @@ class ElyoTouchApi:
             return "cooling"
         return "heating"
 
-    async def _update_control(self, mask: int, value: int) -> None:
-        current = (await self._hr(HR_CONTROL_WORD, 1))[0]
-        await self._write_register(
-            HR_CONTROL_WORD,
-            (current & ~mask) | (value & mask),
-        )
-
     async def async_set_temperature(self, value: float) -> None:
         # The Modbus table marks Status bits 1-2 as not coherent with the
         # Control Word. Use the selected mode from the Control Word to enforce
@@ -224,24 +237,36 @@ class ElyoTouchApi:
         )
 
     async def async_set_power(self, enabled: bool) -> None:
-        await self._update_control(
-            1 << 8,
-            (1 << 8) if enabled else 0,
-        )
+        """Start or stop the heat pump through Control Word bit 8."""
+        await self._write_coil(COIL_POWER, enabled)
 
     async def async_set_hvac_mode(self, mode: str) -> None:
+        """Set Cool/Heat/Auto through the documented bit-addressable coils."""
         codes = {"cool": 1, "heat": 2, "auto": 3, "off": 0}
         if mode == "off":
             await self.async_set_power(False)
             return
-        await self._update_control(
-            (0b11 << 1) | (1 << 8),
-            (codes[mode] << 1) | (1 << 8),
-        )
+
+        code = codes[mode]
+        # Match the known-good Node-RED implementation: 0x211 and 0x212 are
+        # the bit-addressable aliases for Control Word bits 1 and 2. Set the
+        # selected mode before asserting Start so an idle unit never starts in
+        # a stale mode.
+        await self._write_coil(COIL_HVAC_MODE_BIT1, bool(code & 0b01))
+        await self._write_coil(COIL_HVAC_MODE_BIT2, bool(code & 0b10))
+        await self._write_coil(COIL_POWER, True)
 
     async def async_set_preset(self, preset: str) -> None:
+        """Set Silent/Smart/Powerful through Control Word bits 9-11."""
         codes = {"silent": 1, "smart": 2, "powerful": 3}
-        await self._update_control(0b111 << 9, codes[preset] << 9)
+        code = codes[preset]
+
+        # The supplied Node-RED flow writes coils 0x219, 0x21A and 0x21B.
+        # Clear the unsupported/TBD high bit first, then write the two defined
+        # bits. This also avoids rewriting unrelated Control Word fields.
+        await self._write_coil(COIL_PRESET_BIT11, bool(code & 0b100))
+        await self._write_coil(COIL_PRESET_BIT9, bool(code & 0b001))
+        await self._write_coil(COIL_PRESET_BIT10, bool(code & 0b010))
 
     async def async_set_clock(self, address: int, value: Any) -> None:
         await self._write_register(address, value.hour * 60 + value.minute)
@@ -336,10 +361,12 @@ class ElyoTouchApi:
             "hvac_mode": (
                 "off" if not running else selected_hvac_mode
             ),
-            # The climate preset reports the active inverter mode from Status.
-            # Reserved/TBD codes remain unknown instead of becoming Smart.
+            # The climate preset is the selected/memorized Control Word value.
+            # Active inverter feedback is retained separately because Status
+            # can legitimately report 000 while the compressor is idle.
             "selected_preset_mode": selected_preset_mode,
-            "preset_mode": active_preset_mode,
+            "preset_mode": selected_preset_mode,
+            "active_preset_mode": active_preset_mode,
             "hvac_action": self._hvac_action(status),
         }
 

@@ -47,18 +47,70 @@ def test_signed_register_conversion() -> None:
     assert api_module.ElyoTouchApi._s16(0xFFF6) == -10
 
 
-def test_heat_mode_updates_control_word_bits() -> None:
+def test_heat_mode_uses_documented_control_coils() -> None:
     api_module = _load_api_module()
     api = api_module.ElyoTouchApi("127.0.0.1", 502, 5, 10, 9)
-    writes: list[tuple[int, int]] = []
+    writes: list[tuple[int, bool]] = []
 
-    async def update_control(mask: int, value: int) -> None:
-        writes.append((mask, value))
+    async def write_coil(address: int, value: bool) -> None:
+        writes.append((address, value))
 
-    api._update_control = update_control
+    api._write_coil = write_coil
     asyncio.run(api.async_set_hvac_mode("heat"))
 
-    assert writes == [((0b11 << 1) | (1 << 8), (2 << 1) | (1 << 8))]
+    assert writes == [
+        (api_module.COIL_HVAC_MODE_BIT1, False),
+        (api_module.COIL_HVAC_MODE_BIT2, True),
+        (api_module.COIL_POWER, True),
+    ]
+
+
+def test_cool_auto_and_off_use_same_node_red_coil_mapping() -> None:
+    api_module = _load_api_module()
+    api = api_module.ElyoTouchApi("127.0.0.1", 502, 5, 10, 9)
+    writes: list[tuple[int, bool]] = []
+
+    async def write_coil(address: int, value: bool) -> None:
+        writes.append((address, value))
+
+    api._write_coil = write_coil
+
+    asyncio.run(api.async_set_hvac_mode("cool"))
+    assert writes == [
+        (api_module.COIL_HVAC_MODE_BIT1, True),
+        (api_module.COIL_HVAC_MODE_BIT2, False),
+        (api_module.COIL_POWER, True),
+    ]
+
+    writes.clear()
+    asyncio.run(api.async_set_hvac_mode("auto"))
+    assert writes == [
+        (api_module.COIL_HVAC_MODE_BIT1, True),
+        (api_module.COIL_HVAC_MODE_BIT2, True),
+        (api_module.COIL_POWER, True),
+    ]
+
+    writes.clear()
+    asyncio.run(api.async_set_hvac_mode("off"))
+    assert writes == [(api_module.COIL_POWER, False)]
+
+
+def test_preset_uses_documented_219_21a_21b_coils() -> None:
+    api_module = _load_api_module()
+    api = api_module.ElyoTouchApi("127.0.0.1", 502, 5, 10, 9)
+    writes: list[tuple[int, bool]] = []
+
+    async def write_coil(address: int, value: bool) -> None:
+        writes.append((address, value))
+
+    api._write_coil = write_coil
+    asyncio.run(api.async_set_preset("powerful"))
+
+    assert writes == [
+        (api_module.COIL_PRESET_BIT11, False),
+        (api_module.COIL_PRESET_BIT9, True),
+        (api_module.COIL_PRESET_BIT10, True),
+    ]
 
 
 def test_control_word_is_authoritative_for_selected_hvac_mode() -> None:
@@ -79,9 +131,14 @@ def test_control_word_is_authoritative_for_selected_hvac_mode() -> None:
     assert api._status_hvac_mode(3 << 1) == "auto"
 
 
-def test_active_inverter_mode_has_no_fake_smart_fallback() -> None:
+def test_selected_and_active_inverter_modes_are_kept_separate() -> None:
     api_module = _load_api_module()
     api = api_module.ElyoTouchApi
+
+    assert api._control_preset_mode(1 << 9) == "silent"
+    assert api._control_preset_mode(2 << 9) == "smart"
+    assert api._control_preset_mode(3 << 9) == "powerful"
+    assert api._control_preset_mode(0) is None
 
     assert api._active_preset_mode(1 << 9) == "silent"
     assert api._active_preset_mode(2 << 9) == "smart"

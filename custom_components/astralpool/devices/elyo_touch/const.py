@@ -30,6 +30,16 @@ HR_TIMER_STOP: Final = 0x55
 HR_HP_CYCLES: Final = 0x60
 HR_COMPRESSOR_STARTS: Final = 0x61
 
+# Bit-addressable aliases of Control Word 0x21. The supplied Pro Elyo table
+# documents these as user-access controls, and the known-good Node-RED flow
+# writes these coils directly.
+COIL_HVAC_MODE_BIT1: Final = 0x211
+COIL_HVAC_MODE_BIT2: Final = 0x212
+COIL_POWER: Final = 0x218
+COIL_PRESET_BIT9: Final = 0x219
+COIL_PRESET_BIT10: Final = 0x21A
+COIL_PRESET_BIT11: Final = 0x21B
+
 IR_STATUS: Final = 0x00
 IR_ALARMS_1: Final = 0x01
 IR_AMBIENT_TEMPERATURE: Final = 0x07
