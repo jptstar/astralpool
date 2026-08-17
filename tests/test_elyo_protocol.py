@@ -59,3 +59,71 @@ def test_heat_mode_updates_control_word_bits() -> None:
     asyncio.run(api.async_set_hvac_mode("heat"))
 
     assert writes == [((0b11 << 1) | (1 << 8), (2 << 1) | (1 << 8))]
+
+
+def test_control_word_is_authoritative_for_selected_hvac_mode() -> None:
+    api_module = _load_api_module()
+    api = api_module.ElyoTouchApi
+
+    assert api._control_hvac_mode(1 << 1) == "cool"
+    assert api._control_hvac_mode(2 << 1) == "heat"
+    assert api._control_hvac_mode(3 << 1) == "auto"
+    assert api._control_hvac_mode(0) is None
+
+    # Status bits 1-2 remain available as diagnostics, but are intentionally
+    # decoded separately because the Modbus table marks them as not coherent
+    # with the Control Word.
+    assert api._status_hvac_mode(0) == "standby"
+    assert api._status_hvac_mode(1 << 1) == "cool"
+    assert api._status_hvac_mode(2 << 1) == "heat"
+    assert api._status_hvac_mode(3 << 1) == "auto"
+
+
+def test_active_inverter_mode_has_no_fake_smart_fallback() -> None:
+    api_module = _load_api_module()
+    api = api_module.ElyoTouchApi
+
+    assert api._active_preset_mode(1 << 9) == "silent"
+    assert api._active_preset_mode(2 << 9) == "smart"
+    assert api._active_preset_mode(3 << 9) == "powerful"
+    assert api._active_preset_mode(0) is None
+    assert api._active_preset_mode(7 << 9) is None
+
+
+def test_real_hvac_action_uses_start_defrost_compressor_and_valve_bits() -> None:
+    api_module = _load_api_module()
+    action = api_module.ElyoTouchApi._hvac_action
+
+    assert action(0) == "off"
+    assert action(1 << 8) == "idle"
+    assert action((1 << 8) | (1 << 6)) == "heating"
+    assert action((1 << 8) | (1 << 6) | (1 << 4)) == "cooling"
+    assert action((1 << 8) | (1 << 5) | (1 << 6) | (1 << 4)) == "defrosting"
+
+
+def test_temperature_limit_uses_control_word_not_incoherent_status_bits() -> None:
+    api_module = _load_api_module()
+    api = api_module.ElyoTouchApi("127.0.0.1", 502, 5, 10, 9)
+    writes: list[tuple[int, int]] = []
+
+    async def read_holding(address: int, count: int) -> list[int]:
+        assert address == api_module.HR_CONTROL_WORD
+        assert count == 1
+        # Cooling selected in Control Word.
+        return [1 << 1]
+
+    async def write_register(address: int, value: int) -> None:
+        writes.append((address, value))
+
+    api._hr = read_holding
+    api._write_register = write_register
+
+    asyncio.run(api.async_set_temperature(35))
+    assert writes == [(api_module.HR_TEMPERATURE_SETPOINT, 350)]
+
+    try:
+        asyncio.run(api.async_set_temperature(36))
+    except ValueError as err:
+        assert "35" in str(err)
+    else:
+        raise AssertionError("Cooling setpoint above 35 °C should be rejected")
