@@ -1,0 +1,224 @@
+name: Update AstralPool v1.0.0 release page
+
+on:
+  push:
+    branches:
+      - release-v1.0.0-release-page
+    paths:
+      - .github/workflows/update-v1.0.0-release-page.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update v1.0.0 release page
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > /tmp/release.md <<'EOF'
+          <p align="center">
+            <img src="https://raw.githubusercontent.com/jptstar/astralpool/v1.0.0/brand/logo.png" width="180" alt="AstralPool">
+          </p>
+
+          # AstralPool 1.0.0
+
+          **The first stable baseline of the unified AstralPool integration for Home Assistant.**
+
+          Control and monitor supported **AstralPool Smart Next** and **Pro Elyo Touch** equipment locally through Modbus, from a single Home Assistant integration — **no cloud account required**.
+
+          > **Unofficial community project** — independent from AstralPool / Fluidra.
+
+          ## ✨ Highlights
+
+          - 🏊 One Home Assistant domain: **`astralpool`**
+          - 🧪 **Smart Next** — electrolysis, pH, ORP, salinity/conductivity, alarms and configuration
+          - 🔥 **Pro Elyo Touch** — full climate control with real operating feedback
+          - ⚡ Pro Elyo inverter presets finalized as **Silent / Smart / Turbo**
+          - 🔄 Selected Pro Elyo preset is retained and displayed independently from the **active inverter mode**
+          - 🌡️ Real Pro Elyo HVAC action: **Idle / Heating / Cooling / Defrosting / Off**
+          - 🆔 Pro Elyo `MODEL_Serie` identification is exposed as the Home Assistant **device serial number** when available
+          - 🏠 Fully local polling over Modbus TCP gateway
+          - ⚙️ Configurable polling and communication settings
+          - ✅ Python tests, HACS validation and Home Assistant hassfest checks
+
+          ## 🧩 Supported devices
+
+          | Device | Default Unit ID | Home Assistant platforms |
+          | --- | ---: | --- |
+          | **AstralPool Smart Next** | `2` | Sensors, binary sensors, numbers, selects, switches, buttons |
+          | **AstralPool Pro Elyo Touch** | `9` | Climate, sensors, binary sensors, time controls |
+
+          Both devices use **Modbus RTU** and require an external **Modbus RTU-to-TCP gateway**.
+
+          ---
+
+          ## 🧪 Smart Next
+
+          Smart Next exposes the verified operating values, alarms and user-adjustable configuration directly in Home Assistant.
+
+          ### Main controls
+
+          - Electrolysis production — normal and cover values
+          - Boost mode and remaining Boost time
+          - Polarity reversal period
+          - Flow Cell and Flow configuration
+          - Cover control
+          - **Cl mV auto** and **Cl EXT auto**
+          - pH setpoint and initialization time
+          - pH intelligent dosing
+          - **Pump Stop** safety and reset/rearm
+          - ORP setpoint
+          - Temperature alarm thresholds and enable switches
+          - Salinity/conductivity alarm thresholds and enable switches
+          - Bio pool mode
+          - ECO mode when exposed by the controller
+
+          ### Measurements and diagnostics
+
+          - pH
+          - ORP
+          - Water temperature
+          - Salinity / conductivity
+          - Electrolysis current, voltage and production
+          - Operating-hour counters
+          - pH / ORP alarm limits
+          - General and subsystem alarm/status information
+
+          ### Smart Next software compatibility
+
+          Conductivity alarm thresholds are handled automatically:
+
+          - **Software 2.00:** verified `0xC1 / 0xC2` layout
+          - **Historical v1.70:** `0xC2 / 0xC3` layout
+
+          The integration detects the active register layout before reading or writing these thresholds.
+
+          > Calibration, maintenance and factory-reset commands are intentionally **not exposed yet**. They will only be added after the complete workflows and result handling are verified.
+
+          ---
+
+          ## 🔥 Pro Elyo Touch
+
+          Pro Elyo Touch is exposed as a native Home Assistant **Climate** device with separate requested and real operating feedback.
+
+          ### HVAC control
+
+          - **Off**
+          - **Cool**
+          - **Heat**
+          - **Auto**
+          - Target water temperature
+
+          The selected HVAC mode is read from the documented **Control Word**, while the real operating action is derived from the physical status bits.
+
+          ### Real operating action
+
+          Home Assistant can distinguish:
+
+          - **Off** — heat pump stopped
+          - **Idle** — heat pump started but compressor not currently running
+          - **Heating** — compressor running in heating direction
+          - **Cooling** — compressor running in cooling direction
+          - **Defrosting** — defrost cycle active
+
+          This avoids showing “Heating” or “Cooling” simply because that mode was selected.
+
+          ### Inverter presets
+
+          The final Home Assistant names are:
+
+          - 🤫 **Silent**
+          - 🧠 **Smart**
+          - 🚀 **Turbo**
+
+          The integration keeps two separate values:
+
+          - **Selected preset** — the mode requested/memorized by the controller
+          - **Active inverter mode** — the mode currently reported by the heat pump
+
+          Legacy `powerful` service-call input remains accepted internally for compatibility, but the Home Assistant UI uses **Turbo**.
+
+          ### Device information
+
+          When supplied by the controller, the documented `MODEL_Serie_hi` / `MODEL_Serie_lo` words are combined and shown in the Home Assistant device page as the **serial number**, alongside firmware and hardware information.
+
+          ---
+
+          ## 📦 Installation with HACS
+
+          1. Open **HACS → Integrations**.
+          2. Add `jptstar/astralpool` as a **Custom repository** of type **Integration**.
+          3. Install **AstralPool**.
+          4. Restart Home Assistant.
+          5. Open **Settings → Devices & services → Add integration → AstralPool**.
+          6. Select **Smart Next** or **Pro Elyo Touch**.
+          7. Enter the Modbus gateway IP address, TCP port and Unit ID.
+
+          The setup performs a real Modbus read before creating the config entry.
+
+          Multiple Smart Next and Pro Elyo Touch devices can coexist in the same Home Assistant installation.
+
+          ## ⚙️ Communication defaults
+
+          | Setting | Default |
+          | --- | ---: |
+          | TCP port | `502` |
+          | Timeout | `5 s` |
+          | Reconnect delay | `10 s` |
+          | Polling interval | `5 s` |
+          | Smart Next Unit ID | `2` |
+          | Pro Elyo Touch Unit ID | `9` |
+
+          Communication and polling settings can be changed from the integration options.
+
+          ## 🔁 Migrating from the former separate integrations
+
+          The previous custom integrations used the domains `smartnext` and `elyo_touch`. Home Assistant cannot automatically migrate config entries between domains.
+
+          Recommended approach:
+
+          1. Create a Home Assistant backup.
+          2. Install AstralPool.
+          3. Temporarily disable the old matching integration so two integrations do not poll the same RTU device simultaneously.
+          4. Add the device again through **AstralPool**.
+          5. Validate values, controls, alarms and automations.
+          6. Remove the old integration only after the new entry is confirmed working.
+
+          Existing entity IDs may temporarily receive a `_2` suffix during side-by-side testing.
+
+          ## ✅ Validation
+
+          The release baseline is checked with:
+
+          - Python compilation
+          - JSON validation
+          - Protocol unit tests
+          - HACS validation
+          - Home Assistant hassfest
+
+          ## 🔒 Architecture and scope
+
+          - Local Modbus communication
+          - No AstralPool cloud account required
+          - Device-specific protocol implementations remain isolated under the unified `astralpool` domain
+          - Smart Next calibration and factory-maintenance writes remain deliberately excluded from 1.0.0
+
+          ---
+
+          **Project:** https://github.com/jptstar/astralpool
+
+          **Documentation / installation:** https://github.com/jptstar/astralpool#readme
+          EOF
+
+          jq -n \
+            --arg name "AstralPool 1.0.0 — Stable baseline" \
+            --rawfile body /tmp/release.md \
+            '{name: $name, body: $body}' > /tmp/release.json
+
+          gh api \
+            --method PATCH \
+            repos/${GITHUB_REPOSITORY}/releases/371919227 \
+            --input /tmp/release.json
