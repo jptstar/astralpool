@@ -10,6 +10,8 @@ from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
 from .const import (
+    COIL_BIOPOOL_MODE_ENABLE,
+    COIL_ECO_MODE_ENABLE,
     COIL_ELECTROLYSIS_BOOST,
     COIL_ELECTROLYSIS_COVER_CONTROL_ENABLE,
     COIL_ELECTROLYSIS_EXTERNAL_CONTROL_ENABLE,
@@ -35,8 +37,8 @@ from .const import (
     DI_ELECTROLYSIS_LOW_CONDUCTIVITY,
     DI_ELECTROLYSIS_POLARITY,
     DI_ELECTROLYSIS_RUNNING,
-    DI_FLOW_EXTERNAL_SWITCH,
     DI_FLOW_EXTERNAL_STATUS,
+    DI_FLOW_EXTERNAL_SWITCH,
     DI_FLOW_GENERAL,
     DI_FLOW_INTERNAL,
     DI_FLOW_INTERNAL_STATUS,
@@ -67,24 +69,30 @@ from .const import (
     HR_FIRMWARE_VERSION,
     HR_FLOW_CONTROL_WORD,
     HR_HARDWARE_VERSION,
+    HR_ORP_HIGH_ALARM_LIMIT,
+    HR_ORP_LOW_ALARM_LIMIT,
     HR_ORP_SETPOINT,
     HR_PH_DOSAGE_LIMIT,
+    HR_PH_HIGH_ALARM_LIMIT,
     HR_PH_INIT_TIME,
+    HR_PH_LOW_ALARM_LIMIT,
     HR_PH_OUTPUT_CONTROL_WORD,
     HR_PH_SETPOINT,
     HR_PRODUCT_CAPACITY,
     HR_PRODUCT_CODE_HIGH,
     HR_SALT_CONTROL_WORD,
-    HR_SALT_MAX,
-    HR_SALT_MIN,
+    HR_SALT_MAX_V170,
+    HR_SALT_MAX_V200,
+    HR_SALT_MIN_V170,
+    HR_SALT_MIN_V200,
     HR_SERIAL_HIGH,
     HR_SERIAL_LOW,
     HR_SERIAL_MIDDLE,
+    HR_TECHNOLOGIES_ENABLED,
     HR_TECHNOLOGIES_IMPLEMENTED,
     HR_TEMPERATURE_CONTROL_WORD,
     HR_TEMPERATURE_MAX,
     HR_TEMPERATURE_MIN,
-    HR_TECHNOLOGIES_ENABLED,
     IR_ELECTROLYSIS_CHLORINE_PRODUCTION,
     IR_ELECTROLYSIS_CURRENT,
     IR_ELECTROLYSIS_FUNCTIONAL_TARGET,
@@ -137,6 +145,7 @@ class SmartNextApi:
             reconnect_delay=reconnect_delay,
         )
         self._identification: dict[str, Any] | None = None
+        self._firmware_version_raw: int | None = None
 
     @property
     def connected(self) -> bool:
@@ -206,6 +215,18 @@ class SmartNextApi:
             self._check_response(response, f"reading discrete inputs {address}:{count}")
             return [bool(value) for value in response.bits[:count]]
 
+    async def _read_coils(self, address: int, count: int) -> list[bool]:
+        async with self._lock:
+            await self._ensure_connected()
+            try:
+                response = await self._client.read_coils(
+                    address, count=count, device_id=self.unit_id
+                )
+            except (OSError, ModbusException) as err:
+                raise SmartNextCommunicationError(str(err)) from err
+            self._check_response(response, f"reading coils {address}:{count}")
+            return [bool(value) for value in response.bits[:count]]
+
     async def async_write_register(self, address: int, value: int) -> None:
         """Write one holding register."""
         if not 0 <= value <= 0xFFFF:
@@ -255,6 +276,19 @@ class SmartNextApi:
         code = (control_word >> 9) & 0b11
         return (2, 3, 4, 7)[code]
 
+    @staticmethod
+    def _decode_firmware_version(value: int) -> str | None:
+        """Decode decimal firmware values such as 170 -> 1.70 and 200 -> 2.00."""
+        if not value:
+            return None
+        return f"{value // 100}.{value % 100:02d}"
+
+    def _salt_threshold_addresses(self) -> tuple[int, int]:
+        """Return the conductivity alarm registers for the detected firmware."""
+        if self._firmware_version_raw is not None and self._firmware_version_raw >= 200:
+            return HR_SALT_MIN_V200, HR_SALT_MAX_V200
+        return HR_SALT_MIN_V170, HR_SALT_MAX_V170
+
     async def _async_read_identification(self) -> dict[str, Any]:
         """Read immutable identification data once per API instance."""
         if self._identification is not None:
@@ -281,15 +315,15 @@ class SmartNextApi:
         technologies_implemented = value(HR_TECHNOLOGIES_IMPLEMENTED)
         hardware_version = value(HR_HARDWARE_VERSION)
         firmware_version = value(HR_FIRMWARE_VERSION)
+        self._firmware_version_raw = firmware_version
 
         self._identification = {
             "product_capacity": value(HR_PRODUCT_CAPACITY),
             "hardware_version": f"0x{hardware_version:04X}"
             if hardware_version
             else None,
-            "firmware_version": f"0x{firmware_version:04X}"
-            if firmware_version
-            else None,
+            "firmware_version": self._decode_firmware_version(firmware_version),
+            "firmware_version_raw": firmware_version,
             "serial_number": f"{serial:012X}" if serial else None,
             "technologies_implemented": technologies_implemented,
             "technology_electrolysis_implemented": bool(
@@ -311,7 +345,7 @@ class SmartNextApi:
         await self.async_write_coil(COIL_PH_PUMP_STOP_RESET, False)
 
     async def async_read_all(self) -> dict[str, Any]:
-        """Read the verified SmartNext v1.70 points."""
+        """Read the verified Smart Next operating and configuration points."""
         data = dict(await self._async_read_identification())
 
         # Electrolysis input registers 0x41..0x45.
@@ -342,7 +376,7 @@ class SmartNextApi:
             electrolysis_hours[IR_ELECTROLYSIS_PARTIAL_HOURS_MSB - 0x48],
         )
 
-        # pH input registers.
+        # pH input registers and alarm limits.
         data["ph"] = (await self._read_input_registers(IR_PH, 1))[0] / 100
         ph_output = await self._read_input_registers(IR_PH_DOSAGE_ELAPSED, 2)
         data["ph_dosage_elapsed"] = ph_output[IR_PH_DOSAGE_ELAPSED - 0x57]
@@ -350,8 +384,18 @@ class SmartNextApi:
         ph_hours = await self._read_input_registers(IR_PH_TOTAL_HOURS, 2)
         data["ph_total_hours"] = ph_hours[IR_PH_TOTAL_HOURS - 0x5A]
         data["ph_partial_hours"] = ph_hours[IR_PH_PARTIAL_HOURS - 0x5A]
+        ph_alarm_limits = await self._read_holding_registers(HR_PH_LOW_ALARM_LIMIT, 2)
+        data["ph_low_alarm_limit"] = ph_alarm_limits[0] / 100
+        data["ph_high_alarm_limit"] = ph_alarm_limits[
+            HR_PH_HIGH_ALARM_LIMIT - HR_PH_LOW_ALARM_LIMIT
+        ] / 100
 
         data["orp"] = (await self._read_input_registers(IR_ORP, 1))[0]
+        orp_alarm_limits = await self._read_holding_registers(HR_ORP_LOW_ALARM_LIMIT, 2)
+        data["orp_low_alarm_limit"] = orp_alarm_limits[0]
+        data["orp_high_alarm_limit"] = orp_alarm_limits[
+            HR_ORP_HIGH_ALARM_LIMIT - HR_ORP_LOW_ALARM_LIMIT
+        ]
 
         raw_temperature = (await self._read_input_registers(IR_TEMPERATURE, 1))[0]
         data["temperature"] = self._uint16_to_int16(raw_temperature) / 10
@@ -372,8 +416,15 @@ class SmartNextApi:
             technologies_enabled & (1 << 4)
         )
         data["technology_salt_enabled"] = bool(technologies_enabled & (1 << 5))
-        # Protocol v1.70: bit 9 = Biopool mode enabled.
         data["biopool_mode"] = bool(technologies_enabled & (1 << 9))
+
+        # ECO is stored in the HMI configuration coil. Keep it optional so an
+        # older controller that does not expose that extended address does not
+        # make the complete coordinator update fail.
+        try:
+            data["eco_mode"] = (await self._read_coils(COIL_ECO_MODE_ENABLE, 1))[0]
+        except SmartNextCommunicationError as err:
+            _LOGGER.debug("SmartNext ECO mode is unavailable: %s", err)
 
         flow_control = (
             await self._read_holding_registers(HR_FLOW_CONTROL_WORD, 1)
@@ -443,12 +494,15 @@ class SmartNextApi:
             HR_TEMPERATURE_MAX - HR_TEMPERATURE_CONTROL_WORD
         ] / 10
 
-        salt_config = await self._read_holding_registers(HR_SALT_CONTROL_WORD, 4)
-        salt_control_word = salt_config[0]
+        salt_control_word = (
+            await self._read_holding_registers(HR_SALT_CONTROL_WORD, 1)
+        )[0]
         data["salt_low_alarm_enabled"] = bool(salt_control_word & (1 << 11))
         data["salt_high_alarm_enabled"] = bool(salt_control_word & (1 << 12))
-        data["salt_min"] = salt_config[HR_SALT_MIN - HR_SALT_CONTROL_WORD] / 100
-        data["salt_max"] = salt_config[HR_SALT_MAX - HR_SALT_CONTROL_WORD] / 100
+        salt_min_address, salt_max_address = self._salt_threshold_addresses()
+        salt_limits = await self._read_holding_registers(salt_min_address, 2)
+        data["salt_min"] = salt_limits[0] / 100
+        data["salt_max"] = salt_limits[salt_max_address - salt_min_address] / 100
 
         # General status.
         general = await self._read_discrete_inputs(DI_GENERAL_ALARM, 3)
@@ -547,6 +601,14 @@ class SmartNextApi:
     async def async_set_temperature_max(self, value: float) -> None:
         await self.async_write_register(HR_TEMPERATURE_MAX, round(value * 10))
 
+    async def async_set_salt_min(self, value: float) -> None:
+        salt_min_address, _ = self._salt_threshold_addresses()
+        await self.async_write_register(salt_min_address, round(value * 100))
+
+    async def async_set_salt_max(self, value: float) -> None:
+        _, salt_max_address = self._salt_threshold_addresses()
+        await self.async_write_register(salt_max_address, round(value * 100))
+
     async def async_set_ph(self, value: float) -> None:
         await self.async_write_register(HR_PH_SETPOINT, round(value * 100))
 
@@ -569,6 +631,12 @@ class SmartNextApi:
 
     async def async_set_electrolysis_cover(self, value: float) -> None:
         await self.async_write_register(HR_ELECTROLYSIS_COVER_SETPOINT, round(value))
+
+    async def async_set_biopool_mode(self, enabled: bool) -> None:
+        await self.async_write_coil(COIL_BIOPOOL_MODE_ENABLE, enabled)
+
+    async def async_set_eco_mode(self, enabled: bool) -> None:
+        await self.async_write_coil(COIL_ECO_MODE_ENABLE, enabled)
 
     async def async_set_internal_flow_sensor_enabled(self, enabled: bool) -> None:
         await self.async_write_coil(COIL_FLOW_INTERNAL_SENSOR_ENABLE, enabled)
