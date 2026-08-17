@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .entity import ElyoTouchEntity
 
-PRESETS = ["silent", "smart", "powerful"]
+PRESETS = ["Silent", "Smart", "Turbo"]
 
 
 async def async_setup_entry(
@@ -107,7 +107,7 @@ class ElyoTouchClimate(ElyoTouchEntity, ClimateEntity):
         await self.coordinator.async_request_refresh()
 
     async def async_set_preset_mode(self, preset_mode):
-        """Set Silent, Smart or Powerful inverter mode."""
+        """Set Silent, Smart or Turbo inverter mode."""
         await self.coordinator.api.async_set_preset(preset_mode)
         await self.coordinator.async_request_refresh()
 

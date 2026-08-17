@@ -47,6 +47,14 @@ def test_signed_register_conversion() -> None:
     assert api_module.ElyoTouchApi._s16(0xFFF6) == -10
 
 
+def test_pro_elyo_serial_identification_mapping() -> None:
+    api_module = _load_api_module()
+    assert api_module.HR_MODEL_SERIE_HIGH == 0x09
+    assert api_module.HR_MODEL_SERIE_LOW == 0x0A
+    assert api_module.HR_MODEL_PRODUCTION == 0x0B
+    assert api_module.ElyoTouchApi._combine_serial(0x1234, 0xABCD) == 0x1234ABCD
+
+
 def test_heat_mode_uses_documented_control_coils() -> None:
     api_module = _load_api_module()
     api = api_module.ElyoTouchApi("127.0.0.1", 502, 5, 10, 9)
@@ -104,7 +112,7 @@ def test_preset_uses_documented_219_21a_21b_coils() -> None:
         writes.append((address, value))
 
     api._write_coil = write_coil
-    asyncio.run(api.async_set_preset("powerful"))
+    asyncio.run(api.async_set_preset("Turbo"))
 
     assert writes == [
         (api_module.COIL_PRESET_BIT11, False),
@@ -135,14 +143,14 @@ def test_selected_and_active_inverter_modes_are_kept_separate() -> None:
     api_module = _load_api_module()
     api = api_module.ElyoTouchApi
 
-    assert api._control_preset_mode(1 << 9) == "silent"
-    assert api._control_preset_mode(2 << 9) == "smart"
-    assert api._control_preset_mode(3 << 9) == "powerful"
+    assert api._control_preset_mode(1 << 9) == "Silent"
+    assert api._control_preset_mode(2 << 9) == "Smart"
+    assert api._control_preset_mode(3 << 9) == "Turbo"
     assert api._control_preset_mode(0) is None
 
-    assert api._active_preset_mode(1 << 9) == "silent"
-    assert api._active_preset_mode(2 << 9) == "smart"
-    assert api._active_preset_mode(3 << 9) == "powerful"
+    assert api._active_preset_mode(1 << 9) == "Silent"
+    assert api._active_preset_mode(2 << 9) == "Smart"
+    assert api._active_preset_mode(3 << 9) == "Turbo"
     assert api._active_preset_mode(0) is None
     assert api._active_preset_mode(7 << 9) is None
 

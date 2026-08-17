@@ -21,6 +21,9 @@ from .const import (
     HR_CONTROL_WORD,
     HR_HARDWARE_VERSION,
     HR_HP_CYCLES,
+    HR_MODEL_PRODUCTION,
+    HR_MODEL_SERIE_HIGH,
+    HR_MODEL_SERIE_LOW,
     HR_PRODUCT_CODE_HIGH,
     HR_PRODUCT_CODE_LOW,
     HR_SOFTWARE_VERSION,
@@ -160,6 +163,11 @@ class ElyoTouchApi:
         return value - 0x10000 if value & 0x8000 else value
 
     @staticmethod
+    def _combine_serial(high: int, low: int) -> int:
+        """Combine the documented Pro Elyo MODEL_Serie high/low words."""
+        return (high << 16) | low
+
+    @staticmethod
     def _control_hvac_mode(control_word: int) -> str | None:
         """Decode the requested HVAC mode from Control Word bits 1-2."""
         return {
@@ -186,18 +194,18 @@ class ElyoTouchApi:
     def _control_preset_mode(control_word: int) -> str | None:
         """Decode the requested inverter mode from Control Word bits 9-11."""
         return {
-            1: "silent",
-            2: "smart",
-            3: "powerful",
+            1: "Silent",
+            2: "Smart",
+            3: "Turbo",
         }.get((control_word >> 9) & 0b111)
 
     @staticmethod
     def _active_preset_mode(status_word: int) -> str | None:
         """Decode the active inverter mode from Status bits 9-11."""
         return {
-            1: "silent",
-            2: "smart",
-            3: "powerful",
+            1: "Silent",
+            2: "Smart",
+            3: "Turbo",
         }.get((status_word >> 9) & 0b111)
 
     @staticmethod
@@ -257,9 +265,12 @@ class ElyoTouchApi:
         await self._write_coil(COIL_POWER, True)
 
     async def async_set_preset(self, preset: str) -> None:
-        """Set Silent/Smart/Powerful through Control Word bits 9-11."""
-        codes = {"silent": 1, "smart": 2, "powerful": 3}
-        code = codes[preset]
+        """Set Silent/Smart/Turbo through Control Word bits 9-11."""
+        # Keep the old lowercase names as service-call aliases so existing
+        # automations keep working while the Home Assistant UI uses the final
+        # Silent / Smart / Turbo labels.
+        codes = {"silent": 1, "smart": 2, "turbo": 3, "powerful": 3}
+        code = codes[preset.strip().lower()]
 
         # The supplied Node-RED flow writes coils 0x219, 0x21A and 0x21B.
         # Clear the unsupported/TBD high bit first, then write the two defined
@@ -274,7 +285,7 @@ class ElyoTouchApi:
     async def async_read_all(self) -> dict[str, Any]:
         identity = await self._hr(
             HR_PRODUCT_CODE_HIGH,
-            HR_SOFTWARE_VERSION - HR_PRODUCT_CODE_HIGH + 1,
+            HR_MODEL_PRODUCTION - HR_PRODUCT_CODE_HIGH + 1,
         )
         control = (await self._hr(HR_CONTROL_WORD, 1))[0]
         setpoint = (await self._hr(HR_TEMPERATURE_SETPOINT, 1))[0]
@@ -298,6 +309,10 @@ class ElyoTouchApi:
         )
 
         status, alarm1 = status_and_alarm
+        serial = self._combine_serial(
+            identity[HR_MODEL_SERIE_HIGH - HR_PRODUCT_CODE_HIGH],
+            identity[HR_MODEL_SERIE_LOW - HR_PRODUCT_CODE_HIGH],
+        )
         running = bool(status & (1 << 8))
         selected_hvac_mode = self._control_hvac_mode(control)
         selected_preset_mode = self._control_preset_mode(control)
@@ -312,6 +327,10 @@ class ElyoTouchApi:
             "firmware_version": str(
                 identity[HR_SOFTWARE_VERSION - HR_PRODUCT_CODE_HIGH]
             ),
+            "serial_number": f"{serial:08X}" if serial else None,
+            "model_production": identity[
+                HR_MODEL_PRODUCTION - HR_PRODUCT_CODE_HIGH
+            ],
             "control_word": control,
             "status_word": status,
             "temperature_setpoint": setpoint / 10,
