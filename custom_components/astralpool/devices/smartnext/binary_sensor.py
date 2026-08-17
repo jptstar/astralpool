@@ -48,8 +48,6 @@ PROBLEM_SENSORS = (
     "salt_measure_unreliable",
     "salt_current_insufficient",
     "salt_voltage_insufficient",
-    "internal_air_bubble_detected",
-    "external_flow_switch_open",
 )
 
 BINARY_SENSORS: tuple[SmartNextBinarySensorDescription, ...] = tuple(
@@ -67,6 +65,21 @@ BINARY_SENSORS: tuple[SmartNextBinarySensorDescription, ...] = tuple(
         translation_key="treatment_halted",
         data_key="treatment_halted",
         device_class=BinarySensorDeviceClass.PROBLEM,
+    ),
+    # Raw flow input states are intentionally not PROBLEM entities. 0x241/0x242
+    # are the actual Smart Next alarm bits; 0x300/0x302 are raw status inputs
+    # and can be active without the corresponding alarm being raised.
+    SmartNextBinarySensorDescription(
+        key="internal_air_bubble_detected",
+        translation_key="internal_air_bubble_detected",
+        data_key="internal_air_bubble_detected",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SmartNextBinarySensorDescription(
+        key="external_flow_switch_open",
+        translation_key="external_flow_switch_open",
+        data_key="external_flow_switch_open",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SmartNextBinarySensorDescription(
         key="biopool_mode",
