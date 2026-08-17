@@ -1,0 +1,23 @@
+name: Publish AstralPool v0.4.3
+
+on:
+  push:
+    branches:
+      - release-v0.4.3-workflow
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create v0.4.3 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v0.4.3 \
+            --repo "jptstar/astralpool" \
+            --target "40b086ef37f447612ea4e2b39da23098cfd0771e" \
+            --title "AstralPool v0.4.3" \
+            --notes "Pro Elyo Touch state-model correction: use the Control Word for the selected HVAC mode and Status bit 8 for real Stop/Start. Home Assistant now reports real HVAC action from defrost, compressor and four-way-valve feedback, and the active Silent/Smart/Powerful (Turbo) inverter mode from Status bits 9–11. The selected HVAC mode is preserved when restarting, reserved/TBD inverter codes no longer become Smart, and the cooling setpoint limit now follows the Control Word. Includes protocol regression tests."
