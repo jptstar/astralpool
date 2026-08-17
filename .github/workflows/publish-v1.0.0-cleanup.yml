@@ -1,0 +1,58 @@
+name: Publish AstralPool v1.0 baseline
+
+on:
+  push:
+    branches:
+      - release-v1.0.0-publish-cleanup
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TARGET_SHA: 41b4cfd64bfe6bd6117bb70dec6de8c718cfafc5
+      KEEP_TAG: v1.0.0
+    steps:
+      - name: Create stable v1.0.0 release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${KEEP_TAG}" >/dev/null 2>&1; then
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/releases" \
+              -f tag_name="${KEEP_TAG}" \
+              -f target_commitish="${TARGET_SHA}" \
+              -f name="AstralPool v1.0" \
+              -f body='First stable AstralPool baseline. Supports Smart Next and Pro Elyo Touch under the unified astralpool integration. Pro Elyo presets are finalized as Silent, Smart and Turbo; the selected preset remains memorized/displayed, active inverter feedback remains separate, and the documented MODEL_Serie high/low words are exposed as the Home Assistant device serial number when present. Existing AstralPool branding is unchanged.' \
+              -F draft=false \
+              -F prerelease=false >/dev/null
+          fi
+
+      - name: Remove all older GitHub releases
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            --jq '.[] | select(.tag_name != env.KEEP_TAG) | .id' |
+          while read -r release_id; do
+            [ -z "${release_id}" ] && continue
+            echo "Deleting release ${release_id}"
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/${release_id}"
+          done
+
+      - name: Remove all older version tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/" \
+            --jq '.[] | .ref' |
+          while read -r ref; do
+            [ -z "${ref}" ] && continue
+            tag="${ref#refs/tags/}"
+            if [ "${tag}" != "${KEEP_TAG}" ]; then
+              echo "Deleting tag ${tag}"
+              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${tag}"
+            fi
+          done
