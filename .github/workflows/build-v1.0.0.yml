@@ -1,0 +1,135 @@
+name: Build AstralPool v1.0.0 baseline
+
+on:
+  push:
+    branches:
+      - release-v1.0.0-builder
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/v1.0.0
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply v1.0.0 baseline changes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          api_path = Path('custom_components/astralpool/devices/elyo_touch/api.py')
+          api = api_path.read_text()
+
+          api = api.replace(
+              '    HR_HARDWARE_VERSION,\n    HR_HP_CYCLES,\n    HR_PRODUCT_CODE_HIGH,',
+              '    HR_HARDWARE_VERSION,\n    HR_HP_CYCLES,\n    HR_MODEL_PRODUCTION,\n    HR_MODEL_SERIE_HIGH,\n    HR_MODEL_SERIE_LOW,\n    HR_PRODUCT_CODE_HIGH,',
+          )
+          api = api.replace(
+              '    @staticmethod\n    def _control_hvac_mode(control_word: int) -> str | None:',
+              '    @staticmethod\n    def _combine_serial(high: int, low: int) -> int:\n        """Combine the documented Pro Elyo MODEL_Serie high/low words."""\n        return (high << 16) | low\n\n    @staticmethod\n    def _control_hvac_mode(control_word: int) -> str | None:',
+          )
+          api = api.replace(
+              '        return {\n            1: "silent",\n            2: "smart",\n            3: "powerful",\n        }.get((control_word >> 9) & 0b111)',
+              '        return {\n            1: "Silent",\n            2: "Smart",\n            3: "Turbo",\n        }.get((control_word >> 9) & 0b111)',
+              1,
+          )
+          api = api.replace(
+              '        return {\n            1: "silent",\n            2: "smart",\n            3: "powerful",\n        }.get((status_word >> 9) & 0b111)',
+              '        return {\n            1: "Silent",\n            2: "Smart",\n            3: "Turbo",\n        }.get((status_word >> 9) & 0b111)',
+              1,
+          )
+          api = api.replace(
+              '    async def async_set_preset(self, preset: str) -> None:\n        """Set Silent/Smart/Powerful through Control Word bits 9-11."""\n        codes = {"silent": 1, "smart": 2, "powerful": 3}\n        code = codes[preset]',
+              '    async def async_set_preset(self, preset: str) -> None:\n        """Set Silent/Smart/Turbo through Control Word bits 9-11."""\n        # Keep the old lowercase names as service-call aliases so existing\n        # automations keep working while the Home Assistant UI uses the final\n        # Silent / Smart / Turbo labels.\n        codes = {"silent": 1, "smart": 2, "turbo": 3, "powerful": 3}\n        code = codes[preset.strip().lower()]',
+          )
+          api = api.replace(
+              '        identity = await self._hr(\n            HR_PRODUCT_CODE_HIGH,\n            HR_SOFTWARE_VERSION - HR_PRODUCT_CODE_HIGH + 1,\n        )',
+              '        identity = await self._hr(\n            HR_PRODUCT_CODE_HIGH,\n            HR_MODEL_PRODUCTION - HR_PRODUCT_CODE_HIGH + 1,\n        )',
+          )
+          api = api.replace(
+              '        status, alarm1 = status_and_alarm\n        running = bool(status & (1 << 8))',
+              '        status, alarm1 = status_and_alarm\n        serial = self._combine_serial(\n            identity[HR_MODEL_SERIE_HIGH - HR_PRODUCT_CODE_HIGH],\n            identity[HR_MODEL_SERIE_LOW - HR_PRODUCT_CODE_HIGH],\n        )\n        running = bool(status & (1 << 8))',
+          )
+          api = api.replace(
+              '            "firmware_version": str(\n                identity[HR_SOFTWARE_VERSION - HR_PRODUCT_CODE_HIGH]\n            ),\n            "control_word": control,',
+              '            "firmware_version": str(\n                identity[HR_SOFTWARE_VERSION - HR_PRODUCT_CODE_HIGH]\n            ),\n            "serial_number": f"{serial:08X}" if serial else None,\n            "model_production": identity[\n                HR_MODEL_PRODUCTION - HR_PRODUCT_CODE_HIGH\n            ],\n            "control_word": control,',
+          )
+          api_path.write_text(api)
+
+          climate_path = Path('custom_components/astralpool/devices/elyo_touch/climate.py')
+          climate = climate_path.read_text()
+          climate = climate.replace(
+              'PRESETS = ["silent", "smart", "powerful"]',
+              'PRESETS = ["Silent", "Smart", "Turbo"]',
+          )
+          climate = climate.replace(
+              '"""Set Silent, Smart or Powerful inverter mode."""',
+              '"""Set Silent, Smart or Turbo inverter mode."""',
+          )
+          climate_path.write_text(climate)
+
+          test_path = Path('tests/test_elyo_protocol.py')
+          tests = test_path.read_text()
+          tests = tests.replace(
+              'asyncio.run(api.async_set_preset("powerful"))',
+              'asyncio.run(api.async_set_preset("Turbo"))',
+          )
+          tests = tests.replace(
+              'assert api._control_preset_mode(1 << 9) == "silent"\n    assert api._control_preset_mode(2 << 9) == "smart"\n    assert api._control_preset_mode(3 << 9) == "powerful"',
+              'assert api._control_preset_mode(1 << 9) == "Silent"\n    assert api._control_preset_mode(2 << 9) == "Smart"\n    assert api._control_preset_mode(3 << 9) == "Turbo"',
+          )
+          tests = tests.replace(
+              'assert api._active_preset_mode(1 << 9) == "silent"\n    assert api._active_preset_mode(2 << 9) == "smart"\n    assert api._active_preset_mode(3 << 9) == "powerful"',
+              'assert api._active_preset_mode(1 << 9) == "Silent"\n    assert api._active_preset_mode(2 << 9) == "Smart"\n    assert api._active_preset_mode(3 << 9) == "Turbo"',
+          )
+          insert_after = 'def test_signed_register_conversion() -> None:\n    api_module = _load_api_module()\n    assert api_module.ElyoTouchApi._s16(250) == 250\n    assert api_module.ElyoTouchApi._s16(0xFFF6) == -10\n'
+          serial_test = '\n\ndef test_pro_elyo_serial_identification_mapping() -> None:\n    api_module = _load_api_module()\n    assert api_module.HR_MODEL_SERIE_HIGH == 0x09\n    assert api_module.HR_MODEL_SERIE_LOW == 0x0A\n    assert api_module.HR_MODEL_PRODUCTION == 0x0B\n    assert api_module.ElyoTouchApi._combine_serial(0x1234, 0xABCD) == 0x1234ABCD\n'
+          if 'test_pro_elyo_serial_identification_mapping' not in tests:
+              tests = tests.replace(insert_after, insert_after + serial_test)
+          test_path.write_text(tests)
+
+          manifest_path = Path('custom_components/astralpool/manifest.json')
+          manifest = json.loads(manifest_path.read_text())
+          manifest['version'] = '1.0.0'
+          manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
+
+          readme_path = Path('README.md')
+          readme = readme_path.read_text()
+          marker = 'This repository combines Smart Next and Pro Elyo Touch support under a single Home Assistant domain: `astralpool`.\n'
+          addition = marker + '\n**Stable baseline:** version 1.0.0.\n'
+          if '**Stable baseline:** version 1.0.0.' not in readme:
+              readme = readme.replace(marker, addition)
+          if 'Silent / Smart / Turbo' not in readme:
+              readme = readme.replace(
+                  '| AstralPool Pro Elyo Touch | 9 | Climate, sensors, binary sensors, time controls |',
+                  '| AstralPool Pro Elyo Touch | 9 | Climate, sensors, binary sensors, time controls |\n\nPro Elyo Touch exposes the selected Silent / Smart / Turbo inverter preset, the real active inverter feedback, and the documented MODEL_Serie identification as the Home Assistant device serial number when the controller provides it.',
+              )
+          readme_path.write_text(readme)
+
+          # Guard the user-facing preset names and baseline version.
+          assert 'PRESETS = ["Silent", "Smart", "Turbo"]' in climate_path.read_text()
+          assert '"version": "1.0.0"' in manifest_path.read_text()
+          assert 'HR_MODEL_SERIE_HIGH' in api_path.read_text()
+          PY
+
+      - name: Commit release branch
+        shell: bash
+        run: |
+          git diff --check
+          git config user.name "JP"
+          git config user.email "contact@jptestart.com"
+          git add custom_components/astralpool/devices/elyo_touch/api.py \
+                  custom_components/astralpool/devices/elyo_touch/climate.py \
+                  custom_components/astralpool/manifest.json \
+                  tests/test_elyo_protocol.py README.md
+          git commit -m "Prepare AstralPool 1.0.0 baseline"
+          git push origin HEAD:release/v1.0.0
