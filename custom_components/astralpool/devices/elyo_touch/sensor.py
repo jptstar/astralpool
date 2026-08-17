@@ -22,6 +22,7 @@ SENSORS = (
     ElyoTouchSensorDescription(key="fan_speed", translation_key="fan_speed", data_key="fan_speed", native_unit_of_measurement="rpm", state_class=SensorStateClass.MEASUREMENT),
     ElyoTouchSensorDescription(key="compressor_current", translation_key="compressor_current", data_key="compressor_current", native_unit_of_measurement=UnitOfElectricCurrent.AMPERE, device_class=SensorDeviceClass.CURRENT, state_class=SensorStateClass.MEASUREMENT),
     ElyoTouchSensorDescription(key="compressor_frequency", translation_key="compressor_frequency", data_key="compressor_frequency", native_unit_of_measurement=UnitOfFrequency.HERTZ, device_class=SensorDeviceClass.FREQUENCY, state_class=SensorStateClass.MEASUREMENT),
+    ElyoTouchSensorDescription(key="active_preset_mode", name="Mode inverter actif", data_key="active_preset_mode", icon="mdi:heat-pump-outline"),
     ElyoTouchSensorDescription(key="expansion_valve_step", translation_key="expansion_valve_step", data_key="expansion_valve_step", entity_category=EntityCategory.DIAGNOSTIC),
     ElyoTouchSensorDescription(key="hp_cycles", translation_key="hp_cycles", data_key="hp_cycles", state_class=SensorStateClass.TOTAL_INCREASING, entity_category=EntityCategory.DIAGNOSTIC),
     ElyoTouchSensorDescription(key="compressor_starts", translation_key="compressor_starts", data_key="compressor_starts", state_class=SensorStateClass.TOTAL_INCREASING, entity_category=EntityCategory.DIAGNOSTIC),
