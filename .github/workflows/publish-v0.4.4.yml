@@ -1,0 +1,23 @@
+name: Publish AstralPool v0.4.4
+
+on:
+  push:
+    branches:
+      - release-v0.4.4-workflow
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create v0.4.4 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v0.4.4 \
+            --repo "jptstar/astralpool" \
+            --target "c2b54e5e3b6a71f08a666ccf5f55185ecb21e9b1" \
+            --title "AstralPool v0.4.4" \
+            --notes "Pro Elyo Touch control fix. HVAC mode, Start/Stop and inverter presets now use the documented bit-addressable Control Word coils exactly like the known-good Node-RED flow: 0x211/0x212 for Cool/Heat/Auto, 0x218 for Stop/Start and 0x219/0x21A/0x21B for Silent/Smart/Powerful. The climate preset now reports the selected/memorized Control Word value so it stays displayed while the compressor is idle, while a separate Mode inverter actif sensor exposes the real Status bits 9-11 feedback. Real HVAC action remains physical: idle until compressor bit 6 starts, then heating/cooling from the four-way-valve direction, with defrost priority. Includes exact protocol regression tests."
