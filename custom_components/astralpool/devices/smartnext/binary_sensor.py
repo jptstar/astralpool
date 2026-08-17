@@ -66,6 +66,7 @@ BINARY_SENSORS: tuple[SmartNextBinarySensorDescription, ...] = tuple(
         key="treatment_halted",
         translation_key="treatment_halted",
         data_key="treatment_halted",
+        device_class=BinarySensorDeviceClass.PROBLEM,
     ),
     SmartNextBinarySensorDescription(
         key="biopool_mode",
