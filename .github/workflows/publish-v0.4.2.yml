@@ -1,0 +1,23 @@
+name: Publish AstralPool v0.4.2
+
+on:
+  push:
+    branches:
+      - release-v0.4.2-workflow
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create v0.4.2 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v0.4.2 \
+            --repo "${{ github.repository }}" \
+            --target "21b294fe1ba3a5502c6052caea2e473e924c3a8b" \
+            --title "AstralPool v0.4.2" \
+            --notes "Fix Smart Next flow diagnostics so only confirmed alarms use Home Assistant's problem state/red icon. Raw flow states (internal air bubble detected and external flow switch open) remain visible as diagnostics but are no longer presented as faults. Also adds configurable polling from 2 to 120 seconds and marks treatment halted as a problem state. Calibration remains excluded."
