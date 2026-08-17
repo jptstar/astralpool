@@ -112,8 +112,11 @@ class ElyoTouchClimate(ElyoTouchEntity, ClimateEntity):
         await self.coordinator.async_request_refresh()
 
     async def async_turn_on(self):
-        """Start the heat pump without overwriting its selected HVAC mode."""
-        await self.coordinator.api.async_set_power(True)
+        """Start the heat pump while preserving a valid selected HVAC mode."""
+        if self.coordinator.data.get("selected_hvac_mode") is None:
+            await self.coordinator.api.async_set_hvac_mode(HVACMode.AUTO)
+        else:
+            await self.coordinator.api.async_set_power(True)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self):
