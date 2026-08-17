@@ -56,6 +56,7 @@ def test_read_all_decodes_verified_software_200_points() -> None:
         (0x87, 1): [720],
         (0xB0, 4): [(1 << 11) | (1 << 12), 0, 100, 330],
         (0xC0, 1): [(1 << 11) | (1 << 12)],
+        (0xC1, 3): [250, 800, 0],
         (0xC1, 2): [250, 800],
     }
     inputs = {
@@ -132,12 +133,20 @@ def test_read_all_decodes_verified_software_200_points() -> None:
     assert data["eco_mode"] is True
 
 
-def test_software_170_keeps_legacy_salt_threshold_addresses() -> None:
+def test_conductivity_layout_detection_supports_v170_and_v200() -> None:
     api_module = _load_api_module()
-    api = api_module.SmartNextApi("127.0.0.1", 502, 5, 10, 2)
-    api._firmware_version_raw = 170
-    assert api._salt_threshold_addresses() == (0xC2, 0xC3)
-    assert api._decode_firmware_version(170) == "1.70"
+    detect = api_module.SmartNextApi._detect_salt_threshold_addresses
+    assert detect([250, 800, 0]) == (0xC1, 0xC2)
+    assert detect([0, 250, 800]) == (0xC2, 0xC3)
+
+
+def test_firmware_version_decoder_supports_decimal_and_legacy_encoding() -> None:
+    api_module = _load_api_module()
+    decode = api_module.SmartNextApi._decode_firmware_version
+    assert decode(170) == "1.70"
+    assert decode(200) == "2.00"
+    assert decode(0x0170) == "1.70"
+    assert decode(0x0200) == "2.00"
 
 
 def test_polarity_period_writes_only_its_two_documented_coils() -> None:
@@ -154,16 +163,16 @@ def test_polarity_period_writes_only_its_two_documented_coils() -> None:
     assert writes == [(0x409, True), (0x40A, True)]
 
 
-def test_salt_limit_writes_follow_detected_firmware() -> None:
+def test_salt_limit_writes_follow_detected_layout() -> None:
     api_module = _load_api_module()
     api = api_module.SmartNextApi("127.0.0.1", 502, 5, 10, 2)
+    api._salt_threshold_addresses_cache = (0xC1, 0xC2)
     writes: list[tuple[int, int]] = []
 
     async def write_register(address: int, value: int) -> None:
         writes.append((address, value))
 
     api.async_write_register = write_register
-    api._firmware_version_raw = 200
     asyncio.run(api.async_set_salt_min(2.5))
     asyncio.run(api.async_set_salt_max(8.0))
     assert writes == [(0xC1, 250), (0xC2, 800)]
