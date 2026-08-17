@@ -31,7 +31,7 @@ PLATFORMS: Final = [
 MANUFACTURER: Final = "AstralPool"
 MODEL: Final = "Smart Next"
 
-# Input registers (FC04) - protocol v1.70
+# Input registers (FC04).
 IR_ELECTROLYSIS_FUNCTIONAL_TARGET: Final = 0x41
 IR_ELECTROLYSIS_PRODUCTION: Final = 0x42
 IR_ELECTROLYSIS_CURRENT: Final = 0x43
@@ -50,7 +50,7 @@ IR_ORP: Final = 0x81
 IR_TEMPERATURE: Final = 0xB1
 IR_SALT: Final = 0xC1
 
-# Holding registers (FC03 / FC06) - protocol v1.70
+# Holding registers (FC03 / FC06).
 HR_PRODUCT_CODE_HIGH: Final = 0x04
 HR_PRODUCT_CAPACITY: Final = 0x05
 HR_TECHNOLOGIES_IMPLEMENTED: Final = 0x06
@@ -65,19 +65,28 @@ HR_ELECTROLYSIS_CONTROL_WORD: Final = 0x40
 HR_ELECTROLYSIS_NORMAL_SETPOINT: Final = 0x41
 HR_ELECTROLYSIS_COVER_SETPOINT: Final = 0x42
 HR_ELECTROLYSIS_BOOST_REMAINING: Final = 0x44
+HR_PH_LOW_ALARM_LIMIT: Final = 0x51
+HR_PH_HIGH_ALARM_LIMIT: Final = 0x52
 HR_PH_INIT_TIME: Final = 0x55
 HR_PH_OUTPUT_CONTROL_WORD: Final = 0x56
 HR_PH_SETPOINT: Final = 0x57
 HR_PH_DOSAGE_LIMIT: Final = 0x58
+HR_ORP_LOW_ALARM_LIMIT: Final = 0x81
+HR_ORP_HIGH_ALARM_LIMIT: Final = 0x82
 HR_ORP_SETPOINT: Final = 0x87
 HR_TEMPERATURE_CONTROL_WORD: Final = 0xB0
 HR_TEMPERATURE_MIN: Final = 0xB2
 HR_TEMPERATURE_MAX: Final = 0xB3
 HR_SALT_CONTROL_WORD: Final = 0xC0
-HR_SALT_MIN: Final = 0xC2
-HR_SALT_MAX: Final = 0xC3
 
-# Discrete inputs (FC02) - protocol v1.70
+# Conductivity alarm thresholds differ between the historical v1.70 table and the
+# TCN12 software 2.00 hardware verified from the front panel + full read-only dump.
+HR_SALT_MIN_V200: Final = 0xC1
+HR_SALT_MAX_V200: Final = 0xC2
+HR_SALT_MIN_V170: Final = 0xC2
+HR_SALT_MAX_V170: Final = 0xC3
+
+# Discrete inputs (FC02).
 DI_GENERAL_ALARM: Final = 0x200
 DI_TREATMENT_HALTED: Final = 0x202
 
@@ -124,8 +133,13 @@ DI_SALT_CURRENT_INSUFFICIENT: Final = 0xC00
 DI_SALT_MEASURE_UNRELIABLE: Final = 0xC01
 DI_SALT_VOLTAGE_INSUFFICIENT: Final = 0xC02
 
-# Coils (FC05)
-# Flow configuration.
+# Coils (FC05).
+# General / display configuration.
+COIL_BIOPOOL_MODE_ENABLE: Final = 0x0D9
+COIL_ECO_MODE_ENABLE: Final = 0x230B
+
+# Flow configuration. On the Smart Next front panel these are named
+# "Flow Cell" (0x300) and "Flow" (0x301).
 COIL_FLOW_INTERNAL_SENSOR_ENABLE: Final = 0x300
 COIL_FLOW_EXTERNAL_SENSOR_ENABLE: Final = 0x301
 
@@ -143,7 +157,7 @@ COIL_PH_PUMP_STOP_ENABLE: Final = 0x56C
 # 0x56D is specifically the pH pump-stop rearm, not a global alarm reset.
 COIL_PH_PUMP_STOP_RESET: Final = 0x56D
 
-# Temperature and salt alarm configuration.
+# Temperature and conductivity alarm configuration.
 COIL_TEMPERATURE_LOW_ALARM_ENABLE: Final = 0xB0B
 COIL_TEMPERATURE_HIGH_ALARM_ENABLE: Final = 0xB0C
 COIL_SALT_LOW_ALARM_ENABLE: Final = 0xC0B
