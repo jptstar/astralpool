@@ -15,6 +15,31 @@ This repository combines Smart Next and Pro Elyo Touch support under a single Ho
 
 Both devices use Modbus RTU and require an external Modbus RTU-to-TCP gateway. The integration polls locally and does not require a cloud account.
 
+## Smart Next parameters
+
+Smart Next exposes the verified operating values, alarms and user configuration through Home Assistant. Configuration entities are enabled by default.
+
+Current controls include:
+
+- normal and cover electrolysis production
+- Boost mode and remaining Boost time
+- polarity reversal period
+- Flow Cell and Flow configuration
+- cover control
+- Cl mV auto and Cl EXT auto
+- pH setpoint, initialization time, intelligent dosing and Pump Stop
+- ORP setpoint
+- temperature low/high alarm limits and alarm enable switches
+- conductivity/salinity low/high alarm limits and alarm enable switches
+- Bio pool mode
+- ECO mode when the controller exposes the corresponding HMI Modbus point
+
+The integration also exposes the measured pH, ORP, temperature, salinity/conductivity, electrolysis current/voltage/production, hour counters, pH/ORP alarm limits and the documented alarm/status bits.
+
+For Smart Next software 2.00, the conductivity alarm thresholds use the verified `0xC1` / `0xC2` mapping. Older v1.70 controllers keep the historical `0xC2` / `0xC3` mapping, selected automatically from the reported software version.
+
+Calibration and maintenance/factory-reset commands are intentionally not exposed yet. They will only be added after the complete calibration workflow and result handling are verified.
+
 ## Installation
 
 ### HACS
