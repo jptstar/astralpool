@@ -36,7 +36,7 @@ Current controls include:
 
 The integration also exposes the measured pH, ORP, temperature, salinity/conductivity, electrolysis current/voltage/production, hour counters, pH/ORP alarm limits and the documented alarm/status bits.
 
-For Smart Next software 2.00, the conductivity alarm thresholds use the verified `0xC1` / `0xC2` mapping. Older v1.70 controllers keep the historical `0xC2` / `0xC3` mapping, selected automatically from the reported software version.
+For Smart Next software 2.00, the conductivity alarm thresholds use the verified `0xC1` / `0xC2` mapping. Older v1.70 controllers use the historical `0xC2` / `0xC3` mapping. The integration detects the active layout from the controller registers before reading or writing these limits.
 
 Calibration and maintenance/factory-reset commands are intentionally not exposed yet. They will only be added after the complete calibration workflow and result handling are verified.
 
