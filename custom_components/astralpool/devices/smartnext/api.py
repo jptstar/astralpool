@@ -146,6 +146,7 @@ class SmartNextApi:
         )
         self._identification: dict[str, Any] | None = None
         self._firmware_version_raw: int | None = None
+        self._salt_threshold_addresses_cache: tuple[int, int] | None = None
 
     @property
     def connected(self) -> bool:
@@ -278,16 +279,49 @@ class SmartNextApi:
 
     @staticmethod
     def _decode_firmware_version(value: int) -> str | None:
-        """Decode decimal firmware values such as 170 -> 1.70 and 200 -> 2.00."""
+        """Decode decimal hundredths and older BCD-like firmware encodings."""
         if not value:
             return None
-        return f"{value // 100}.{value % 100:02d}"
+        if value <= 0xFF:
+            return f"{value // 100}.{value % 100:02d}"
 
-    def _salt_threshold_addresses(self) -> tuple[int, int]:
-        """Return the conductivity alarm registers for the detected firmware."""
-        if self._firmware_version_raw is not None and self._firmware_version_raw >= 200:
+        major = (value >> 8) & 0xFF
+        minor_bcd = value & 0xFF
+        if (
+            major <= 9
+            and (minor_bcd >> 4) <= 9
+            and (minor_bcd & 0x0F) <= 9
+        ):
+            minor = ((minor_bcd >> 4) * 10) + (minor_bcd & 0x0F)
+            return f"{major}.{minor:02d}"
+
+        return f"0x{value:04X}"
+
+    @staticmethod
+    def _detect_salt_threshold_addresses(values: list[int]) -> tuple[int, int]:
+        """Detect the conductivity threshold layout from C1..C3 values."""
+        if len(values) != 3:
+            raise ValueError("Expected exactly three conductivity registers")
+
+        c1, c2, c3 = values
+        if c3 == 0 and 0 < c1 < c2:
             return HR_SALT_MIN_V200, HR_SALT_MAX_V200
+        if 0 < c2 < c3:
+            return HR_SALT_MIN_V170, HR_SALT_MAX_V170
+
+        # The historical protocol is the conservative fallback when the values
+        # are not sufficient to identify the layout unambiguously.
         return HR_SALT_MIN_V170, HR_SALT_MAX_V170
+
+    async def _async_salt_threshold_addresses(self) -> tuple[int, int]:
+        """Return and cache the conductivity threshold register layout."""
+        if self._salt_threshold_addresses_cache is not None:
+            return self._salt_threshold_addresses_cache
+        values = await self._read_holding_registers(HR_SALT_MIN_V200, 3)
+        self._salt_threshold_addresses_cache = self._detect_salt_threshold_addresses(
+            values
+        )
+        return self._salt_threshold_addresses_cache
 
     async def _async_read_identification(self) -> dict[str, Any]:
         """Read immutable identification data once per API instance."""
@@ -499,7 +533,7 @@ class SmartNextApi:
         )[0]
         data["salt_low_alarm_enabled"] = bool(salt_control_word & (1 << 11))
         data["salt_high_alarm_enabled"] = bool(salt_control_word & (1 << 12))
-        salt_min_address, salt_max_address = self._salt_threshold_addresses()
+        salt_min_address, salt_max_address = await self._async_salt_threshold_addresses()
         salt_limits = await self._read_holding_registers(salt_min_address, 2)
         data["salt_min"] = salt_limits[0] / 100
         data["salt_max"] = salt_limits[salt_max_address - salt_min_address] / 100
@@ -602,11 +636,11 @@ class SmartNextApi:
         await self.async_write_register(HR_TEMPERATURE_MAX, round(value * 10))
 
     async def async_set_salt_min(self, value: float) -> None:
-        salt_min_address, _ = self._salt_threshold_addresses()
+        salt_min_address, _ = await self._async_salt_threshold_addresses()
         await self.async_write_register(salt_min_address, round(value * 100))
 
     async def async_set_salt_max(self, value: float) -> None:
-        _, salt_max_address = self._salt_threshold_addresses()
+        _, salt_max_address = await self._async_salt_threshold_addresses()
         await self.async_write_register(salt_max_address, round(value * 100))
 
     async def async_set_ph(self, value: float) -> None:
