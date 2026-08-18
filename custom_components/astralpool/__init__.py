@@ -212,18 +212,18 @@ def _async_normalize_entity_ids(
     platform_map = _CANONICAL_ENTITY_OBJECT_IDS.get(device_type, {})
     for registry_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
         if not registry_entry.unique_id.startswith(prefix):
-  continue
+            continue
         key = registry_entry.unique_id[len(prefix):]
         domain = registry_entry.entity_id.split(".", 1)[0]
         object_id = platform_map.get(domain, {}).get(key)
         if object_id is None:
-  continue
+            continue
         new_entity_id = f"{domain}.{object_id}"
         if registry_entry.entity_id == new_entity_id:
-  continue
+            continue
         existing = registry.async_get(new_entity_id)
         if existing is not None and existing.id != registry_entry.id:
-  continue
+            continue
         registry.async_update_entity(registry_entry.entity_id, new_entity_id=new_entity_id)
 
 
