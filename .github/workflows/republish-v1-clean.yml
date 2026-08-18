@@ -1,0 +1,39 @@
+name: Republish clean AstralPool v1.0.0
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/republish-v1-clean.yml
+
+permissions:
+  contents: write
+
+jobs:
+  republish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Finalize clean baseline
+        id: final
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/republish-v1-clean.yml
+          git commit -m "Finalize clean AstralPool 1.0 baseline"
+          git push origin HEAD:main
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Republish v1.0.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.final.outputs.sha }}
+        run: |
+          gh release view v1.0.0 --repo "$GITHUB_REPOSITORY" --json body --jq .body > /tmp/release.md
+          gh release delete v1.0.0 --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+          gh release create v1.0.0 --repo "$GITHUB_REPOSITORY" --target "$SHA" --title "AstralPool 1.0.0 — Stable baseline" --notes-file /tmp/release.md
