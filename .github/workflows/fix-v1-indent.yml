@@ -1,0 +1,57 @@
+name: Fix AstralPool v1.0 normalization
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Fix indentation and validate
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('custom_components/astralpool/__init__.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('\n  continue\n', '\n            continue\n')
+          path.write_text(text, encoding='utf-8')
+          PY
+          python -m compileall custom_components tests
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for path in Path('.').rglob('*.json'):
+              json.loads(path.read_text(encoding='utf-8'))
+          PY
+          python -m pip install -q pytest pytest-asyncio
+          python -m pytest -q
+      - name: Commit fixed baseline
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/fix-v1-indent.yml
+          git add -A
+          git commit -m "Fix AstralPool 1.0 entity ID migration"
+          git push origin HEAD:main
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Move v1.0.0 release to fixed commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          gh release view v1.0.0 --repo "$GITHUB_REPOSITORY" --json body --jq .body > /tmp/release.md
+          gh release delete v1.0.0 --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+          gh release create v1.0.0 --repo "$GITHUB_REPOSITORY" --target "$SHA" --title "AstralPool 1.0.0 — Stable baseline" --notes-file /tmp/release.md
