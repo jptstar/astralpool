@@ -288,10 +288,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: AstralPoolConfigEntry) -
 
     _async_enable_integration_disabled_entities(hass, entry)
 
+    # Existing registry entries must be renamed before the platforms are loaded.
+    # Otherwise Home Assistant keeps the old area/device-derived object IDs.
+    _async_normalize_entity_ids(hass, entry, device_type)
+
     await hass.config_entries.async_forward_entry_setups(
         entry, PLATFORMS_BY_DEVICE_TYPE[device_type]
     )
+
+    # Keep the immediate pass for platforms that registered synchronously, then
+    # run once more on the next loop turn for entities queued by async_add_entities.
     _async_normalize_entity_ids(hass, entry, device_type)
+    hass.loop.call_soon(_async_normalize_entity_ids, hass, entry, device_type)
     return True
 
 
