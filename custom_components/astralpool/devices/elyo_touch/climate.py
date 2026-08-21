@@ -58,7 +58,6 @@ class ElyoTouchClimate(ElyoTouchEntity, ClimateEntity):
     def __init__(self, coordinator, entry_id, host):
         super().__init__(coordinator, entry_id, host)
         self._attr_unique_id = f"{entry_id}_climate"
-        self._attr_suggested_object_id = "pro_elyo_touch"
 
     @property
     def current_temperature(self):
