@@ -53,3 +53,19 @@ def test_device_selection_precedes_connection_step() -> None:
     assert "CONF_DEVICE_TYPE" in source
     assert "DEVICE_TYPE_SMARTNEXT" in source
     assert "DEVICE_TYPE_ELYO_TOUCH" in source
+
+
+def test_existing_device_can_be_reconfigured() -> None:
+    """Allow changing the Modbus endpoint without deleting the config entry."""
+    source = FLOW.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    functions = {
+        node.name for node in ast.walk(tree) if isinstance(node, ast.AsyncFunctionDef)
+    }
+
+    assert "async_step_reconfigure" in functions
+    assert "SOURCE_RECONFIGURE" in source
+    assert "async_entry_for_domain_unique_id" in source
+    assert "async_update_reload_and_abort" in source
+    assert "unique_id=unique_id" in source
+    assert "options={}" in source
