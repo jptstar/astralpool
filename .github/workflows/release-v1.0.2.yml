@@ -1,0 +1,43 @@
+name: Publish AstralPool v1.0.2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - custom_components/astralpool/manifest.json
+      - .github/workflows/release-v1.0.2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Publish v1.0.2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v1.0.2 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v1.0.2 already exists"
+            exit 0
+          fi
+          gh release create v1.0.2 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "AstralPool 1.0.2 — Entity IDs & reconfiguration" \
+            --notes $'Fix Home Assistant 2026 entity ID generation so Smart Next and Pro Elyo Touch keep short canonical IDs even when the device is assigned to an area.\n\nExamples:\n- climate.pro_elyo_touch\n- sensor.pro_elyo_touch_inlet_water_temperature\n- sensor.smart_next_ph\n\nAlso adds Home Assistant device reconfiguration for gateway host/IP, TCP port, Modbus Unit ID, timeout, reconnect delay and polling interval. The new Modbus connection is validated before saving.'
+
+      - name: Remove one-time release workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/release-v1.0.2.yml
+          git commit -m "Remove v1.0.2 release workflow"
+          git push origin HEAD:main
