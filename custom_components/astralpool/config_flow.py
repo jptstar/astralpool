@@ -56,6 +56,7 @@ _SCAN_INTERVAL_SELECTOR = vol.All(
         )
     ),
     vol.Coerce(int),
+    vol.Range(min=MIN_SCAN_INTERVAL, max=MAX_SCAN_INTERVAL),
 )
 
 
