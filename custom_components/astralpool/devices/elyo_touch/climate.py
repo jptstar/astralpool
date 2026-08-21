@@ -86,29 +86,39 @@ class ElyoTouchClimate(ElyoTouchEntity, ClimateEntity):
         """Return the selected/memorized inverter preset from Control Word."""
         return self.coordinator.data.get("preset_mode")
 
+    @property
+    def max_temp(self):
+        """Return the documented maximum for the selected Control Word mode."""
+        return (
+            35
+            if self.coordinator.data.get("selected_hvac_mode") == "cool"
+            else 40
+        )
+
     async def async_set_temperature(self, **kwargs):
         """Set the target temperature."""
-        temperature = kwargs.get("temperature")
-        if temperature is not None:
-            await self.coordinator.api.async_set_temperature_setpoint(temperature)
-            await self.coordinator.async_request_refresh()
-
-    async def async_set_hvac_mode(self, hvac_mode: HVACMode):
-        """Set the HVAC mode."""
-        await self.coordinator.api.async_set_hvac_mode(hvac_mode.value)
+        await self.coordinator.api.async_set_temperature(kwargs["temperature"])
         await self.coordinator.async_request_refresh()
 
-    async def async_set_preset_mode(self, preset_mode: str):
-        """Set the inverter preset mode."""
-        await self.coordinator.api.async_set_preset_mode(preset_mode)
+    async def async_set_hvac_mode(self, hvac_mode):
+        """Set the HVAC mode."""
+        await self.coordinator.api.async_set_hvac_mode(hvac_mode)
+        await self.coordinator.async_request_refresh()
+
+    async def async_set_preset_mode(self, preset_mode):
+        """Set Silent, Smart or Turbo inverter mode."""
+        await self.coordinator.api.async_set_preset(preset_mode)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_on(self):
-        """Turn on the heat pump."""
-        await self.coordinator.api.async_set_power(True)
+        """Start the heat pump while preserving a valid selected HVAC mode."""
+        if self.coordinator.data.get("selected_hvac_mode") is None:
+            await self.coordinator.api.async_set_hvac_mode(HVACMode.AUTO)
+        else:
+            await self.coordinator.api.async_set_power(True)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self):
-        """Turn off the heat pump."""
+        """Stop the heat pump while preserving its selected HVAC mode."""
         await self.coordinator.api.async_set_power(False)
         await self.coordinator.async_request_refresh()
