@@ -4,7 +4,7 @@ Local Modbus integration for supported AstralPool pool equipment.
 
 This repository combines Smart Next and Pro Elyo Touch support under a single Home Assistant domain: `astralpool`.
 
-**Stable baseline:** version 1.0.0.
+**Stable baseline:** version 1.0.1.
 
 > **Unofficial project** — This is an independent community integration. It is not developed, approved, endorsed, or maintained by AstralPool or Fluidra. AstralPool, Fluidra and their product names and trademarks remain the property of their respective owners.
 
