@@ -4,7 +4,7 @@ Local Modbus integration for supported AstralPool pool equipment.
 
 This repository combines Smart Next and Pro Elyo Touch support under a single Home Assistant domain: `astralpool`.
 
-**Stable baseline:** version 1.0.1.
+**Stable baseline:** version 1.0.2.
 
 > **Unofficial project** — This is an independent community integration. It is not developed, approved, endorsed, or maintained by AstralPool or Fluidra. AstralPool, Fluidra and their product names and trademarks remain the property of their respective owners.
 
@@ -105,6 +105,8 @@ Once the new AstralPool entry has been validated:
 - Pro Elyo Touch Unit ID: `9`
 
 Unit ID, timeout, reconnect delay and polling interval can be adjusted from the integration options.
+
+The gateway host/IP, TCP port and all Modbus communication parameters can also be changed later with **Settings → Devices & services → AstralPool → Reconfigure**. The new connection is validated before it is saved.
 
 ## Requirements
 
