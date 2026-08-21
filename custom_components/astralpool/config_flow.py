@@ -5,7 +5,7 @@ from __future__ import annotations
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlowResult
+from homeassistant.config_entries import SOURCE_RECONFIGURE, ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_TIMEOUT
 from homeassistant.core import callback
 from homeassistant.helpers.selector import (
@@ -77,6 +77,16 @@ def _connection_schema(device_type: str, defaults: dict | None = None) -> vol.Sc
     )
 
 
+def _connection_unique_id(device_type: str, data: dict) -> str:
+    """Return the unique ID for one AstralPool Modbus endpoint."""
+    return (
+        f"{device_type}:"
+        f"{data[CONF_HOST]}:"
+        f"{data[CONF_PORT]}:"
+        f"{data[CONF_UNIT_ID]}"
+    )
+
+
 async def _test_connection(device_type: str, data: dict) -> None:
     api_class = SmartNextApi if device_type == DEVICE_TYPE_SMARTNEXT else ElyoTouchApi
     api = api_class(
@@ -126,17 +136,26 @@ class AstralPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if self._device_type is None:
             return await self.async_step_user()
 
+        reconfigure_entry = (
+            self._get_reconfigure_entry()
+            if self.source == SOURCE_RECONFIGURE
+            else None
+        )
         errors: dict[str, str] = {}
+
         if user_input is not None:
             data = {CONF_DEVICE_TYPE: self._device_type, **user_input}
-            unique_id = (
-                f"{self._device_type}:"
-                f"{user_input[CONF_HOST]}:"
-                f"{user_input[CONF_PORT]}:"
-                f"{user_input[CONF_UNIT_ID]}"
-            )
-            await self.async_set_unique_id(unique_id)
-            self._abort_if_unique_id_configured()
+            unique_id = _connection_unique_id(self._device_type, user_input)
+
+            if reconfigure_entry is not None:
+                existing = self.hass.config_entries.async_entry_for_domain_unique_id(
+                    DOMAIN, unique_id
+                )
+                if existing is not None and existing.entry_id != reconfigure_entry.entry_id:
+                    return self.async_abort(reason="already_configured")
+            else:
+                await self.async_set_unique_id(unique_id)
+                self._abort_if_unique_id_configured()
 
             try:
                 await _test_connection(self._device_type, user_input)
@@ -150,17 +169,50 @@ class AstralPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception:  # noqa: BLE001
                 errors["base"] = "unknown"
             else:
-                return self.async_create_entry(
-                    title=f"{DEVICE_NAMES[self._device_type]} {user_input[CONF_HOST]}",
-                    data=data,
-                )
+                title = f"{DEVICE_NAMES[self._device_type]} {user_input[CONF_HOST]}"
+                if reconfigure_entry is not None:
+                    return self.async_update_reload_and_abort(
+                        reconfigure_entry,
+                        data=data,
+                        options={},
+                        title=title,
+                        unique_id=unique_id,
+                    )
+                return self.async_create_entry(title=title, data=data)
+
+        defaults = user_input
+        if reconfigure_entry is not None and defaults is None:
+            defaults = {
+                CONF_HOST: reconfigure_entry.data[CONF_HOST],
+                CONF_PORT: reconfigure_entry.data[CONF_PORT],
+                CONF_UNIT_ID: reconfigure_entry.options.get(
+                    CONF_UNIT_ID, reconfigure_entry.data[CONF_UNIT_ID]
+                ),
+                CONF_TIMEOUT: reconfigure_entry.options.get(
+                    CONF_TIMEOUT, reconfigure_entry.data[CONF_TIMEOUT]
+                ),
+                CONF_RECONNECT_DELAY: reconfigure_entry.options.get(
+                    CONF_RECONNECT_DELAY,
+                    reconfigure_entry.data[CONF_RECONNECT_DELAY],
+                ),
+                CONF_SCAN_INTERVAL: reconfigure_entry.options.get(
+                    CONF_SCAN_INTERVAL,
+                    reconfigure_entry.data[CONF_SCAN_INTERVAL],
+                ),
+            }
 
         return self.async_show_form(
             step_id="connection",
-            data_schema=_connection_schema(self._device_type, user_input),
+            data_schema=_connection_schema(self._device_type, defaults),
             errors=errors,
             description_placeholders={"device_name": DEVICE_NAMES[self._device_type]},
         )
+
+    async def async_step_reconfigure(self, user_input=None) -> ConfigFlowResult:
+        """Reconfigure the Modbus endpoint for an existing AstralPool device."""
+        entry = self._get_reconfigure_entry()
+        self._device_type = entry.data[CONF_DEVICE_TYPE]
+        return await self.async_step_connection(user_input)
 
     @staticmethod
     @callback
