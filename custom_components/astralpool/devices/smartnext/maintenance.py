@@ -17,6 +17,7 @@ from .const import (
     COIL_SALT_CONFIG_RESET,
     COIL_TEMPERATURE_CALIBRATION_RESET,
     COIL_TEMPERATURE_CONFIG_RESET,
+    DI_TREATMENT_HALTED,
     HR_WATCHDOG_CONFIG,
     HR_WATCHDOG_TIME,
     IR_CALIBRATION_RESPONSE,
@@ -69,6 +70,9 @@ CALIBRATION_RESPONSE_MESSAGES: Final = {
 }
 
 WATCHDOG_RESTART_SECONDS: Final = 60
+CALIBRATION_MODE_TIMEOUT: Final = 8.0
+CALIBRATION_COMMAND_TIMEOUT: Final = 5.0
+CALIBRATION_RESPONSE_TIMEOUT: Final = 20.0
 
 
 class SmartNextMaintenanceError(Exception):
@@ -92,6 +96,22 @@ async def _async_release_command(api: Any, coil: int, *, max_wait: float = 2.0) 
     await api.async_write_coil(coil, False)
 
 
+async def _async_wait_treatment_halted(
+    api: Any,
+    expected: bool,
+    *,
+    timeout: float = CALIBRATION_MODE_TIMEOUT,
+) -> None:
+    """Wait until the controller confirms entering or leaving calibration mode."""
+    deadline = asyncio.get_running_loop().time() + timeout
+    while asyncio.get_running_loop().time() < deadline:
+        value = (await api._read_discrete_inputs(DI_TREATMENT_HALTED, 1))[0]
+        if bool(value) is expected:
+            return
+        await asyncio.sleep(0.2)
+    raise SmartNextMaintenanceError("timeout")
+
+
 async def async_run_config_reset(api: Any, action: str) -> str:
     """Run one documented configuration reset command."""
     try:
@@ -100,7 +120,7 @@ async def async_run_config_reset(api: Any, action: str) -> str:
         raise SmartNextMaintenanceError("unsupported_action") from err
 
     await api.async_write_coil(coil, True)
-    await _async_release_command(api, coil)
+    await _async_release_command(api, coil, max_wait=CALIBRATION_COMMAND_TIMEOUT)
     return "ok"
 
 
@@ -118,7 +138,11 @@ async def _async_clear_calibration_response(api: Any) -> None:
     raise SmartNextMaintenanceError("response_not_cleared")
 
 
-async def _async_wait_calibration_response(api: Any, *, timeout: float = 20.0) -> int:
+async def _async_wait_calibration_response(
+    api: Any,
+    *,
+    timeout: float = CALIBRATION_RESPONSE_TIMEOUT,
+) -> int:
     """Wait for the Smart Next calibration result register."""
     deadline = asyncio.get_running_loop().time() + timeout
     while asyncio.get_running_loop().time() < deadline:
@@ -130,7 +154,7 @@ async def _async_wait_calibration_response(api: Any, *, timeout: float = 20.0) -
 
 
 async def async_run_calibration_reset(api: Any, action: str) -> str:
-    """Reset one calibration using the documented calibration workflow."""
+    """Reset one calibration using the controller-confirmed calibration workflow."""
     try:
         command_coil = CALIBRATION_RESET_COILS[action]
     except KeyError as err:
@@ -138,22 +162,56 @@ async def async_run_calibration_reset(api: Any, action: str) -> str:
 
     await _async_clear_calibration_response(api)
     await api.async_write_coil(COIL_CALIBRATION_MODE, True)
-    await asyncio.sleep(0.2)
 
+    result: str | None = None
+    pending_error: SmartNextMaintenanceError | None = None
     try:
+        # Do not send the reset while the Smart Next is merely transitioning into
+        # calibration mode. Input 0x202 explicitly confirms that water treatment
+        # has stopped and the controller is ready for calibration commands.
+        await _async_wait_treatment_halted(api, True)
+
         await api.async_write_coil(command_coil, True)
+        # The reset command is documented as volatile. Let the controller consume
+        # and self-clear it before evaluating the calibration result.
+        await _async_release_command(
+            api,
+            command_coil,
+            max_wait=CALIBRATION_COMMAND_TIMEOUT,
+        )
+
         response = await _async_wait_calibration_response(api)
         result = CALIBRATION_RESPONSE_MESSAGES.get(response)
         if result == "ok":
-            return result
-        if result is None:
-            raise SmartNextMaintenanceError(f"unexpected_response_{response}")
-        raise SmartNextMaintenanceError(result)
+            pass
+        elif result is None:
+            pending_error = SmartNextMaintenanceError(
+                f"unexpected_response_{response}"
+            )
+        else:
+            pending_error = SmartNextMaintenanceError(result)
+    except SmartNextMaintenanceError as err:
+        pending_error = err
     finally:
+        # Always leave calibration mode. The reset command should already be
+        # released, but explicitly clear it if a communication/timing failure
+        # interrupted the normal one-shot lifecycle.
         try:
-            await api.async_write_coil(command_coil, False)
-        finally:
-            await api.async_write_coil(COIL_CALIBRATION_MODE, False)
+            await _async_release_command(api, command_coil, max_wait=0.5)
+        except Exception:  # noqa: BLE001 - continue with mandatory mode cleanup
+            pass
+        await api.async_write_coil(COIL_CALIBRATION_MODE, False)
+        try:
+            await _async_wait_treatment_halted(api, False)
+        except SmartNextMaintenanceError as err:
+            if pending_error is None:
+                pending_error = err
+
+    if pending_error is not None:
+        raise pending_error
+    if result != "ok":
+        raise SmartNextMaintenanceError("timeout")
+    return result
 
 
 async def async_read_watchdog(api: Any) -> tuple[int, int]:
