@@ -5,9 +5,7 @@
       "user": {
         "title": "Ajouter un appareil AstralPool",
         "description": "Choisissez l’appareil AstralPool à configurer.",
-        "data": {
-          "device_type": "Type d’appareil"
-        }
+        "data": {"device_type": "Type d’appareil"}
       },
       "connection": {
         "title": "Connexion Modbus",
@@ -26,13 +24,21 @@
       "cannot_connect": "Impossible de lire l’appareil AstralPool sélectionné. Vérifiez l’adresse et le port de la passerelle, le mode TCP vers RTU, les paramètres série et l’identifiant d’unité Modbus.",
       "unknown": "Erreur inattendue."
     },
-    "abort": {
-      "already_configured": "Cette connexion AstralPool est déjà configurée."
-    }
+    "abort": {"already_configured": "Cette connexion AstralPool est déjà configurée."}
   },
   "options": {
+    "error": {
+      "confirmation_required": "Confirmez l’opération de maintenance avant de continuer."
+    },
     "step": {
       "init": {
+        "title": "Réglages AstralPool",
+        "menu_options": {
+          "communication": "Paramètres de communication",
+          "maintenance": "Maintenance Smart Next"
+        }
+      },
+      "communication": {
         "title": "Paramètres de communication AstralPool",
         "data": {
           "unit_id": "Identifiant d’unité Modbus",
@@ -40,554 +46,214 @@
           "reconnect_delay": "Délai de reconnexion (s)",
           "scan_interval": "Intervalle d’interrogation (s)"
         }
+      },
+      "maintenance": {
+        "title": "Maintenance Smart Next",
+        "description": "Choisissez une procédure de maintenance guidée. Seules les procédures compatibles avec le matériel Smart Next détecté sont proposées.",
+        "data": {"maintenance_action": "Procédure"}
+      },
+      "maintenance_confirm": {
+        "title": "Confirmer la procédure de maintenance",
+        "description": "**{action}**\n\n{details}\n\nL’opération écrit directement dans le Smart Next en Modbus local. Confirmez uniquement si vous souhaitez l’exécuter maintenant.",
+        "data": {"confirm": "Je comprends et je souhaite exécuter cette procédure"}
+      },
+      "maintenance_result": {
+        "title": "Résultat de la maintenance",
+        "description": "{result}"
       }
     }
   },
   "entity": {
     "sensor": {
-      "electrolysis_rated_capacity": {
-        "name": "Électrolyse · capacité nominale"
-      },
-      "boost_remaining_time": {
-        "name": "Électrolyse · Boost restant"
-      },
-      "temperature": {
-        "name": "Température · eau"
-      },
-      "temperature_min": {
-        "name": "Température · seuil bas actuel"
-      },
-      "temperature_max": {
-        "name": "Température · seuil haut actuel"
-      },
-      "salt": {
-        "name": "Salinité · mesure"
-      },
-      "salt_min": {
-        "name": "Salinité · seuil bas actuel"
-      },
-      "salt_max": {
-        "name": "Salinité · seuil haut actuel"
-      },
-      "ph": {
-        "name": "pH · mesure"
-      },
-      "ph_low_alarm_limit": {
-        "name": "pH · seuil alarme bas"
-      },
-      "ph_high_alarm_limit": {
-        "name": "pH · seuil alarme haut"
-      },
-      "ph_dosage_elapsed": {
-        "name": "pH · dosage écoulé"
-      },
-      "ph_pump_output": {
-        "name": "pH · sortie pompe"
-      },
-      "ph_total_hours": {
-        "name": "pH · heures totales de dosage"
-      },
-      "ph_partial_hours": {
-        "name": "pH · heures partielles de dosage"
-      },
-      "orp": {
-        "name": "ORP · mesure"
-      },
-      "orp_low_alarm_limit": {
-        "name": "ORP · seuil alarme bas"
-      },
-      "orp_high_alarm_limit": {
-        "name": "ORP · seuil alarme haut"
-      },
-      "electrolysis_functional_target": {
-        "name": "Électrolyse · consigne active"
-      },
-      "electrolysis_production": {
-        "name": "Électrolyse · production"
-      },
-      "electrolysis_current": {
-        "name": "Électrolyse · courant"
-      },
-      "electrolysis_voltage": {
-        "name": "Électrolyse · tension"
-      },
-      "electrolysis_chlorine_production": {
-        "name": "Électrolyse · production chlore"
-      },
-      "electrolysis_total_hours": {
-        "name": "Électrolyse · heures totales"
-      },
-      "electrolysis_partial_hours": {
-        "name": "Électrolyse · heures partielles"
-      },
-      "ambient_temperature": {
-        "name": "Température · air ambiant"
-      },
-      "inlet_temperature": {
-        "name": "Température · eau entrée"
-      },
-      "outlet_temperature": {
-        "name": "Température · eau sortie"
-      },
-      "gas_return_temperature": {
-        "name": "Température · retour gaz"
-      },
-      "coil_temperature": {
-        "name": "Température · batterie"
-      },
-      "gas_exhaust_temperature": {
-        "name": "Température · refoulement gaz"
-      },
-      "fan_speed": {
-        "name": "Ventilateur · vitesse"
-      },
-      "compressor_current": {
-        "name": "Compresseur · courant"
-      },
-      "compressor_frequency": {
-        "name": "Compresseur · fréquence"
-      },
-      "expansion_valve_step": {
-        "name": "Détendeur · position"
-      },
-      "hp_cycles": {
-        "name": "Compteur · PAC · cycles"
-      },
-      "compressor_starts": {
-        "name": "Compteur · Compresseur · démarrages"
-      },
-      "product_code": {
-        "name": "Identification · code produit"
-      },
-      "alarm_count_inlet_sensor_failure": {
-        "name": "Compteur alarme · Eau · sonde température entrée"
-      },
-      "alarm_count_outlet_sensor_failure": {
-        "name": "Compteur alarme · Eau · sonde température sortie"
-      },
-      "alarm_count_heating_overheat": {
-        "name": "Compteur alarme · Chauffage · surchauffe"
-      },
-      "alarm_count_gas_exhaust_too_high": {
-        "name": "Compteur alarme · Compresseur · température refoulement élevée"
-      },
-      "alarm_count_low_ambient_protection": {
-        "name": "Compteur alarme · Air · température ambiante basse"
-      },
-      "alarm_count_cooling_pipe_too_high": {
-        "name": "Compteur alarme · Refroidissement · température tuyau élevée"
-      },
-      "alarm_count_low_pressure": {
-        "name": "Compteur alarme · Pression · basse"
-      },
-      "alarm_count_high_pressure": {
-        "name": "Compteur alarme · Pression · haute"
-      },
-      "alarm_count_ambient_sensor_failure": {
-        "name": "Compteur alarme · Air · sonde température"
-      },
-      "alarm_count_water_flow_abnormal": {
-        "name": "Compteur alarme · Eau · débit anormal"
-      },
-      "alarm_count_winter_antifreeze": {
-        "name": "Compteur alarme · Antigel · protection hiver"
-      },
-      "alarm_count_software_control_failure": {
-        "name": "Compteur alarme · Système · contrôle logiciel"
-      },
-      "alarm_count_cooling_too_cold": {
-        "name": "Compteur alarme · Refroidissement · température trop basse"
-      },
-      "alarm_count_heating_coil_sensor_failure": {
-        "name": "Compteur alarme · Chauffage · sonde batterie"
-      },
-      "alarm_count_gas_return_sensor_failure": {
-        "name": "Compteur alarme · Compresseur · sonde retour gaz"
-      },
-      "alarm_count_current_detection_failure": {
-        "name": "Compteur alarme · Compresseur · détection courant"
-      },
-      "alarm_count_pfc_module_protection": {
-        "name": "Compteur alarme · PFC · protection module"
-      },
-      "alarm_count_exhaust_temperature_failure": {
-        "name": "Compteur alarme · Compresseur · sonde température refoulement"
-      },
-      "alarm_count_main_drive_communication_failure": {
-        "name": "Compteur alarme · Inverter · communication carte principale"
-      },
-      "alarm_count_eeprom_failure": {
-        "name": "Compteur alarme · Mémoire · EEPROM"
-      },
-      "alarm_count_pfc_temperature_sensor_failure": {
-        "name": "Compteur alarme · PFC · sonde température interne"
-      },
-      "alarm_count_module_board_failure": {
-        "name": "Compteur alarme · Inverter · carte module"
-      },
-      "alarm_count_vdc_overvoltage": {
-        "name": "Compteur alarme · VDC · surtension"
-      },
-      "alarm_count_compressor_overcurrent": {
-        "name": "Compteur alarme · Compresseur · surintensité"
-      },
-      "alarm_count_dc_fan_failure": {
-        "name": "Compteur alarme · Ventilateur · moteur DC"
-      },
-      "alarm_count_pfc_overtemperature": {
-        "name": "Compteur alarme · PFC · surchauffe"
-      },
-      "alarm_count_input_power_failure": {
-        "name": "Compteur alarme · Alimentation · défaut"
-      },
-      "alarm_count_controller_main_communication_failure": {
-        "name": "Compteur alarme · Communication · contrôleur–carte principale"
-      },
-      "alarm_count_vdc_undervoltage": {
-        "name": "Compteur alarme · VDC · sous-tension"
-      },
-      "alarm_count_overcurrent": {
-        "name": "Compteur alarme · Système · surintensité"
-      },
-      "alarm_count_drive_ambient_sensor_failure": {
-        "name": "Compteur alarme · Inverter · sonde température ambiante"
-      },
-      "alarm_count_ipm_overtemperature": {
-        "name": "Compteur alarme · IPM · surchauffe"
-      }
+      "electrolysis_rated_capacity": {"name": "Électrolyse · capacité nominale"},
+      "boost_remaining_time": {"name": "Électrolyse · Boost restant"},
+      "temperature": {"name": "Température · eau"},
+      "temperature_min": {"name": "Température · seuil bas actuel"},
+      "temperature_max": {"name": "Température · seuil haut actuel"},
+      "salt": {"name": "Salinité · mesure"},
+      "salt_min": {"name": "Salinité · seuil bas actuel"},
+      "salt_max": {"name": "Salinité · seuil haut actuel"},
+      "ph": {"name": "pH · mesure"},
+      "ph_low_alarm_limit": {"name": "pH · seuil alarme bas"},
+      "ph_high_alarm_limit": {"name": "pH · seuil alarme haut"},
+      "ph_dosage_elapsed": {"name": "pH · dosage écoulé"},
+      "ph_pump_output": {"name": "pH · sortie pompe"},
+      "ph_total_hours": {"name": "pH · heures totales de dosage"},
+      "ph_partial_hours": {"name": "pH · heures partielles de dosage"},
+      "orp": {"name": "ORP · mesure"},
+      "orp_low_alarm_limit": {"name": "ORP · seuil alarme bas"},
+      "orp_high_alarm_limit": {"name": "ORP · seuil alarme haut"},
+      "electrolysis_functional_target": {"name": "Électrolyse · consigne active"},
+      "electrolysis_production": {"name": "Électrolyse · production"},
+      "electrolysis_current": {"name": "Électrolyse · courant"},
+      "electrolysis_voltage": {"name": "Électrolyse · tension"},
+      "electrolysis_chlorine_production": {"name": "Électrolyse · production chlore"},
+      "electrolysis_total_hours": {"name": "Électrolyse · heures totales"},
+      "electrolysis_partial_hours": {"name": "Électrolyse · heures partielles"},
+      "ambient_temperature": {"name": "Température · air ambiant"},
+      "inlet_temperature": {"name": "Température · eau entrée"},
+      "outlet_temperature": {"name": "Température · eau sortie"},
+      "gas_return_temperature": {"name": "Température · retour gaz"},
+      "coil_temperature": {"name": "Température · batterie"},
+      "gas_exhaust_temperature": {"name": "Température · refoulement gaz"},
+      "fan_speed": {"name": "Ventilateur · vitesse"},
+      "compressor_current": {"name": "Compresseur · courant"},
+      "compressor_frequency": {"name": "Compresseur · fréquence"},
+      "expansion_valve_step": {"name": "Détendeur · position"},
+      "hp_cycles": {"name": "Compteur · PAC · cycles"},
+      "compressor_starts": {"name": "Compteur · Compresseur · démarrages"},
+      "product_code": {"name": "Identification · code produit"},
+      "alarm_count_inlet_sensor_failure": {"name": "Compteur alarme · Eau · sonde température entrée"},
+      "alarm_count_outlet_sensor_failure": {"name": "Compteur alarme · Eau · sonde température sortie"},
+      "alarm_count_heating_overheat": {"name": "Compteur alarme · Chauffage · surchauffe"},
+      "alarm_count_gas_exhaust_too_high": {"name": "Compteur alarme · Compresseur · température refoulement élevée"},
+      "alarm_count_low_ambient_protection": {"name": "Compteur alarme · Air · température ambiante basse"},
+      "alarm_count_cooling_pipe_too_high": {"name": "Compteur alarme · Refroidissement · température tuyau élevée"},
+      "alarm_count_low_pressure": {"name": "Compteur alarme · Pression · basse"},
+      "alarm_count_high_pressure": {"name": "Compteur alarme · Pression · haute"},
+      "alarm_count_ambient_sensor_failure": {"name": "Compteur alarme · Air · sonde température"},
+      "alarm_count_water_flow_abnormal": {"name": "Compteur alarme · Eau · débit anormal"},
+      "alarm_count_winter_antifreeze": {"name": "Compteur alarme · Antigel · protection hiver"},
+      "alarm_count_software_control_failure": {"name": "Compteur alarme · Système · contrôle logiciel"},
+      "alarm_count_cooling_too_cold": {"name": "Compteur alarme · Refroidissement · température trop basse"},
+      "alarm_count_heating_coil_sensor_failure": {"name": "Compteur alarme · Chauffage · sonde batterie"},
+      "alarm_count_gas_return_sensor_failure": {"name": "Compteur alarme · Compresseur · sonde retour gaz"},
+      "alarm_count_current_detection_failure": {"name": "Compteur alarme · Compresseur · détection courant"},
+      "alarm_count_pfc_module_protection": {"name": "Compteur alarme · PFC · protection module"},
+      "alarm_count_exhaust_temperature_failure": {"name": "Compteur alarme · Compresseur · sonde température refoulement"},
+      "alarm_count_main_drive_communication_failure": {"name": "Compteur alarme · Inverter · communication carte principale"},
+      "alarm_count_eeprom_failure": {"name": "Compteur alarme · Mémoire · EEPROM"},
+      "alarm_count_pfc_temperature_sensor_failure": {"name": "Compteur alarme · PFC · sonde température interne"},
+      "alarm_count_module_board_failure": {"name": "Compteur alarme · Inverter · carte module"},
+      "alarm_count_vdc_overvoltage": {"name": "Compteur alarme · VDC · surtension"},
+      "alarm_count_compressor_overcurrent": {"name": "Compteur alarme · Compresseur · surintensité"},
+      "alarm_count_dc_fan_failure": {"name": "Compteur alarme · Ventilateur · moteur DC"},
+      "alarm_count_pfc_overtemperature": {"name": "Compteur alarme · PFC · surchauffe"},
+      "alarm_count_input_power_failure": {"name": "Compteur alarme · Alimentation · défaut"},
+      "alarm_count_controller_main_communication_failure": {"name": "Compteur alarme · Communication · contrôleur–carte principale"},
+      "alarm_count_vdc_undervoltage": {"name": "Compteur alarme · VDC · sous-tension"},
+      "alarm_count_overcurrent": {"name": "Compteur alarme · Système · surintensité"},
+      "alarm_count_drive_ambient_sensor_failure": {"name": "Compteur alarme · Inverter · sonde température ambiante"},
+      "alarm_count_ipm_overtemperature": {"name": "Compteur alarme · IPM · surchauffe"}
     },
     "binary_sensor": {
-      "general_alarm": {
-        "name": "Alarme · Système · générale"
-      },
-      "flow_alarm": {
-        "name": "Alarme · Débit · générale"
-      },
-      "internal_flow_alarm": {
-        "name": "Alarme · Débit · interne / bulle d’air"
-      },
-      "external_flow_switch_alarm": {
-        "name": "Alarme · Débit · détecteur externe"
-      },
-      "internal_air_bubble_detected": {
-        "name": "Débit · bulle d’air interne détectée"
-      },
-      "external_flow_switch_open": {
-        "name": "Débit · détecteur externe ouvert"
-      },
-      "electrolysis_check_cell_alarm": {
-        "name": "Alarme · Électrolyse · contrôle cellule"
-      },
-      "electrolysis_low_conductivity_alarm": {
-        "name": "Alarme · Électrolyse · conductivité basse"
-      },
-      "electrolysis_high_conductivity_alarm": {
-        "name": "Alarme · Électrolyse · conductivité élevée"
-      },
-      "ph_low_alarm": {
-        "name": "Alarme · pH · basse"
-      },
-      "ph_high_alarm": {
-        "name": "Alarme · pH · haute"
-      },
-      "ph_pump_stop_alarm": {
-        "name": "Alarme · pH · Pump Stop"
-      },
-      "ph_fuse_alarm": {
-        "name": "Alarme · pH · fusible"
-      },
-      "orp_low_alarm": {
-        "name": "Alarme · ORP · basse"
-      },
-      "orp_high_alarm": {
-        "name": "Alarme · ORP · haute"
-      },
-      "temperature_low_alarm": {
-        "name": "Alarme · Température · basse"
-      },
-      "temperature_high_alarm": {
-        "name": "Alarme · Température · haute"
-      },
-      "salt_low_alarm": {
-        "name": "Alarme · Salinité · basse"
-      },
-      "salt_high_alarm": {
-        "name": "Alarme · Salinité · haute"
-      },
-      "ph_measure_unreliable": {
-        "name": "Alarme · pH · mesure non fiable"
-      },
-      "orp_measure_unreliable": {
-        "name": "Alarme · ORP · mesure non fiable"
-      },
-      "temperature_measure_unreliable": {
-        "name": "Alarme · Température · mesure non fiable"
-      },
-      "salt_measure_unreliable": {
-        "name": "Alarme · Salinité · mesure non fiable"
-      },
-      "salt_current_insufficient": {
-        "name": "Alarme · Salinité · courant insuffisant"
-      },
-      "salt_voltage_insufficient": {
-        "name": "Alarme · Salinité · tension insuffisante"
-      },
-      "treatment_halted": {
-        "name": "Alarme · Système · traitement arrêté"
-      },
-      "electrolysis_running": {
-        "name": "Électrolyse · fonctionnement"
-      },
-      "electrolysis_reverse_polarity": {
-        "name": "Électrolyse · polarité inversée"
-      },
-      "cover_input": {
-        "name": "Couverture · entrée active"
-      },
-      "cover_active": {
-        "name": "Couverture · active"
-      },
-      "ph_initializing": {
-        "name": "pH · initialisation"
-      },
-      "ph_dosing_active": {
-        "name": "pH · dosage en cours"
-      },
-      "biopool_mode": {
-        "name": "Système · mode Bio Pool"
-      },
-      "external_chlorine_control_input": {
-        "name": "Électrolyse · entrée chlore externe"
-      },
-      "internal_orp_control_stop": {
-        "name": "Électrolyse · arrêt par ORP interne"
-      },
-      "external_control_stop": {
-        "name": "Électrolyse · arrêt par régulation externe"
-      },
-      "running": {
-        "name": "PAC · en marche"
-      },
-      "compressor_running": {
-        "name": "Compresseur · en marche"
-      },
-      "defrost": {
-        "name": "PAC · dégivrage"
-      },
-      "filter_priority_mode": {
-        "name": "Filtration · mode permanent"
-      },
-      "timer_enabled": {
-        "name": "Minuterie · active"
-      },
-      "alarm": {
-        "name": "Alarme · Système · générale"
-      },
-      "alarm_inlet_sensor_failure": {
-        "name": "Alarme · Eau · sonde température entrée"
-      },
-      "alarm_outlet_sensor_failure": {
-        "name": "Alarme · Eau · sonde température sortie"
-      },
-      "alarm_heating_overheat": {
-        "name": "Alarme · Chauffage · surchauffe"
-      },
-      "alarm_gas_exhaust_too_high": {
-        "name": "Alarme · Compresseur · température refoulement élevée"
-      },
-      "alarm_low_ambient_protection": {
-        "name": "Alarme · Air · température ambiante basse"
-      },
-      "alarm_cooling_pipe_too_high": {
-        "name": "Alarme · Refroidissement · température tuyau élevée"
-      },
-      "alarm_low_pressure": {
-        "name": "Alarme · Pression · basse"
-      },
-      "alarm_high_pressure": {
-        "name": "Alarme · Pression · haute"
-      },
-      "alarm_ambient_sensor_failure": {
-        "name": "Alarme · Air · sonde température"
-      },
-      "alarm_water_flow_abnormal": {
-        "name": "Alarme · Eau · débit anormal"
-      },
-      "alarm_winter_antifreeze": {
-        "name": "Alarme · Antigel · protection hiver"
-      },
-      "alarm_software_control_failure": {
-        "name": "Alarme · Système · contrôle logiciel"
-      },
-      "alarm_cooling_too_cold": {
-        "name": "Alarme · Refroidissement · température trop basse"
-      },
-      "alarm_heating_coil_sensor_failure": {
-        "name": "Alarme · Chauffage · sonde batterie"
-      },
-      "alarm_gas_return_sensor_failure": {
-        "name": "Alarme · Compresseur · sonde retour gaz"
-      },
-      "alarm_current_detection_failure": {
-        "name": "Alarme · Compresseur · détection courant"
-      },
-      "alarm_pfc_module_protection": {
-        "name": "Alarme · PFC · protection module"
-      },
-      "alarm_exhaust_temperature_failure": {
-        "name": "Alarme · Compresseur · sonde température refoulement"
-      },
-      "alarm_main_drive_communication_failure": {
-        "name": "Alarme · Inverter · communication carte principale"
-      },
-      "alarm_eeprom_failure": {
-        "name": "Alarme · Mémoire · EEPROM"
-      },
-      "alarm_pfc_temperature_sensor_failure": {
-        "name": "Alarme · PFC · sonde température interne"
-      },
-      "alarm_module_board_failure": {
-        "name": "Alarme · Inverter · carte module"
-      },
-      "alarm_vdc_overvoltage": {
-        "name": "Alarme · VDC · surtension"
-      },
-      "alarm_compressor_overcurrent": {
-        "name": "Alarme · Compresseur · surintensité"
-      },
-      "alarm_dc_fan_failure": {
-        "name": "Alarme · Ventilateur · moteur DC"
-      },
-      "alarm_pfc_overtemperature": {
-        "name": "Alarme · PFC · surchauffe"
-      },
-      "alarm_input_power_failure": {
-        "name": "Alarme · Alimentation · défaut"
-      },
-      "alarm_controller_main_communication_failure": {
-        "name": "Alarme · Communication · contrôleur–carte principale"
-      },
-      "alarm_vdc_undervoltage": {
-        "name": "Alarme · VDC · sous-tension"
-      },
-      "alarm_overcurrent": {
-        "name": "Alarme · Système · surintensité"
-      },
-      "alarm_drive_ambient_sensor_failure": {
-        "name": "Alarme · Inverter · sonde température ambiante"
-      },
-      "alarm_ipm_overtemperature": {
-        "name": "Alarme · IPM · surchauffe"
-      }
+      "general_alarm": {"name": "Alarme · Système · générale"},
+      "flow_alarm": {"name": "Alarme · Débit · générale"},
+      "internal_flow_alarm": {"name": "Alarme · Débit · interne / bulle d’air"},
+      "external_flow_switch_alarm": {"name": "Alarme · Débit · détecteur externe"},
+      "internal_air_bubble_detected": {"name": "Débit · bulle d’air interne détectée"},
+      "external_flow_switch_open": {"name": "Débit · détecteur externe ouvert"},
+      "electrolysis_check_cell_alarm": {"name": "Alarme · Électrolyse · contrôle cellule"},
+      "electrolysis_low_conductivity_alarm": {"name": "Alarme · Électrolyse · conductivité basse"},
+      "electrolysis_high_conductivity_alarm": {"name": "Alarme · Électrolyse · conductivité élevée"},
+      "ph_low_alarm": {"name": "Alarme · pH · basse"},
+      "ph_high_alarm": {"name": "Alarme · pH · haute"},
+      "ph_pump_stop_alarm": {"name": "Alarme · pH · Pump Stop"},
+      "ph_fuse_alarm": {"name": "Alarme · pH · fusible"},
+      "orp_low_alarm": {"name": "Alarme · ORP · basse"},
+      "orp_high_alarm": {"name": "Alarme · ORP · haute"},
+      "temperature_low_alarm": {"name": "Alarme · Température · basse"},
+      "temperature_high_alarm": {"name": "Alarme · Température · haute"},
+      "salt_low_alarm": {"name": "Alarme · Salinité · basse"},
+      "salt_high_alarm": {"name": "Alarme · Salinité · haute"},
+      "ph_measure_unreliable": {"name": "Alarme · pH · mesure non fiable"},
+      "orp_measure_unreliable": {"name": "Alarme · ORP · mesure non fiable"},
+      "temperature_measure_unreliable": {"name": "Alarme · Température · mesure non fiable"},
+      "salt_measure_unreliable": {"name": "Alarme · Salinité · mesure non fiable"},
+      "salt_current_insufficient": {"name": "Alarme · Salinité · courant insuffisant"},
+      "salt_voltage_insufficient": {"name": "Alarme · Salinité · tension insuffisante"},
+      "treatment_halted": {"name": "Alarme · Système · traitement arrêté"},
+      "electrolysis_running": {"name": "Électrolyse · fonctionnement"},
+      "electrolysis_reverse_polarity": {"name": "Électrolyse · polarité inversée"},
+      "cover_input": {"name": "Couverture · entrée active"},
+      "cover_active": {"name": "Couverture · active"},
+      "ph_initializing": {"name": "pH · initialisation"},
+      "ph_dosing_active": {"name": "pH · dosage en cours"},
+      "biopool_mode": {"name": "Système · mode Bio Pool"},
+      "external_chlorine_control_input": {"name": "Électrolyse · entrée chlore externe"},
+      "internal_orp_control_stop": {"name": "Électrolyse · arrêt par ORP interne"},
+      "external_control_stop": {"name": "Électrolyse · arrêt par régulation externe"},
+      "running": {"name": "PAC · en marche"},
+      "compressor_running": {"name": "Compresseur · en marche"},
+      "defrost": {"name": "PAC · dégivrage"},
+      "filter_priority_mode": {"name": "Filtration · mode permanent"},
+      "timer_enabled": {"name": "Minuterie · active"},
+      "alarm": {"name": "Alarme · Système · générale"},
+      "alarm_inlet_sensor_failure": {"name": "Alarme · Eau · sonde température entrée"},
+      "alarm_outlet_sensor_failure": {"name": "Alarme · Eau · sonde température sortie"},
+      "alarm_heating_overheat": {"name": "Alarme · Chauffage · surchauffe"},
+      "alarm_gas_exhaust_too_high": {"name": "Alarme · Compresseur · température refoulement élevée"},
+      "alarm_low_ambient_protection": {"name": "Alarme · Air · température ambiante basse"},
+      "alarm_cooling_pipe_too_high": {"name": "Alarme · Refroidissement · température tuyau élevée"},
+      "alarm_low_pressure": {"name": "Alarme · Pression · basse"},
+      "alarm_high_pressure": {"name": "Alarme · Pression · haute"},
+      "alarm_ambient_sensor_failure": {"name": "Alarme · Air · sonde température"},
+      "alarm_water_flow_abnormal": {"name": "Alarme · Eau · débit anormal"},
+      "alarm_winter_antifreeze": {"name": "Alarme · Antigel · protection hiver"},
+      "alarm_software_control_failure": {"name": "Alarme · Système · contrôle logiciel"},
+      "alarm_cooling_too_cold": {"name": "Alarme · Refroidissement · température trop basse"},
+      "alarm_heating_coil_sensor_failure": {"name": "Alarme · Chauffage · sonde batterie"},
+      "alarm_gas_return_sensor_failure": {"name": "Alarme · Compresseur · sonde retour gaz"},
+      "alarm_current_detection_failure": {"name": "Alarme · Compresseur · détection courant"},
+      "alarm_pfc_module_protection": {"name": "Alarme · PFC · protection module"},
+      "alarm_exhaust_temperature_failure": {"name": "Alarme · Compresseur · sonde température refoulement"},
+      "alarm_main_drive_communication_failure": {"name": "Alarme · Inverter · communication carte principale"},
+      "alarm_eeprom_failure": {"name": "Alarme · Mémoire · EEPROM"},
+      "alarm_pfc_temperature_sensor_failure": {"name": "Alarme · PFC · sonde température interne"},
+      "alarm_module_board_failure": {"name": "Alarme · Inverter · carte module"},
+      "alarm_vdc_overvoltage": {"name": "Alarme · VDC · surtension"},
+      "alarm_compressor_overcurrent": {"name": "Alarme · Compresseur · surintensité"},
+      "alarm_dc_fan_failure": {"name": "Alarme · Ventilateur · moteur DC"},
+      "alarm_pfc_overtemperature": {"name": "Alarme · PFC · surchauffe"},
+      "alarm_input_power_failure": {"name": "Alarme · Alimentation · défaut"},
+      "alarm_controller_main_communication_failure": {"name": "Alarme · Communication · contrôleur–carte principale"},
+      "alarm_vdc_undervoltage": {"name": "Alarme · VDC · sous-tension"},
+      "alarm_overcurrent": {"name": "Alarme · Système · surintensité"},
+      "alarm_drive_ambient_sensor_failure": {"name": "Alarme · Inverter · sonde température ambiante"},
+      "alarm_ipm_overtemperature": {"name": "Alarme · IPM · surchauffe"}
     },
     "number": {
-      "temperature_min_setpoint": {
-        "name": "Température · seuil bas réglé"
-      },
-      "temperature_max_setpoint": {
-        "name": "Température · seuil haut réglé"
-      },
-      "salt_min_setpoint": {
-        "name": "Salinité · seuil bas réglé"
-      },
-      "salt_max_setpoint": {
-        "name": "Salinité · seuil haut réglé"
-      },
-      "ph_setpoint": {
-        "name": "pH · consigne"
-      },
-      "ph_dosage_limit": {
-        "name": "pH · Pump Stop · durée maximale"
-      },
-      "orp_setpoint": {
-        "name": "ORP · consigne"
-      },
-      "electrolysis_normal_setpoint": {
-        "name": "Électrolyse · production normale"
-      },
-      "electrolysis_cover_setpoint": {
-        "name": "Électrolyse · production couverture"
-      }
+      "temperature_min_setpoint": {"name": "Température · seuil bas réglé"},
+      "temperature_max_setpoint": {"name": "Température · seuil haut réglé"},
+      "salt_min_setpoint": {"name": "Salinité · seuil bas réglé"},
+      "salt_max_setpoint": {"name": "Salinité · seuil haut réglé"},
+      "ph_setpoint": {"name": "pH · consigne"},
+      "ph_dosage_limit": {"name": "pH · Pump Stop · durée maximale"},
+      "orp_setpoint": {"name": "ORP · consigne"},
+      "electrolysis_normal_setpoint": {"name": "Électrolyse · production normale"},
+      "electrolysis_cover_setpoint": {"name": "Électrolyse · production couverture"}
     },
     "select": {
       "ph_initialization_time": {
         "name": "pH · durée d’initialisation",
-        "state": {
-          "off": "Désactivé",
-          "seconds_60": "60 secondes",
-          "seconds_120": "120 secondes",
-          "seconds_240": "240 secondes"
-        }
+        "state": {"off": "Désactivé", "seconds_60": "60 secondes", "seconds_120": "120 secondes", "seconds_240": "240 secondes"}
       },
       "polarity_reversal_period": {
         "name": "Électrolyse · période d’inversion de polarité",
-        "state": {
-          "hours_2": "2 heures",
-          "hours_3": "3 heures",
-          "hours_4": "4 heures",
-          "hours_7": "7 heures"
-        }
+        "state": {"hours_2": "2 heures", "hours_3": "3 heures", "hours_4": "4 heures", "hours_7": "7 heures"}
       }
     },
     "switch": {
-      "boost_mode": {
-        "name": "Électrolyse · mode Boost"
-      },
-      "cover_control_enabled": {
-        "name": "Couverture · contrôle"
-      },
-      "internal_orp_control_enabled": {
-        "name": "Électrolyse · Cl mV auto"
-      },
-      "external_chlorine_control_enabled": {
-        "name": "Électrolyse · Cl EXT auto"
-      },
-      "internal_flow_sensor_enabled": {
-        "name": "Débit · Flow Cell"
-      },
-      "external_flow_sensor_enabled": {
-        "name": "Débit · Flow"
-      },
-      "ph_intelligent_dosing_enabled": {
-        "name": "pH · dosage intelligent"
-      },
-      "ph_pump_stop_enabled": {
-        "name": "pH · Pump Stop"
-      },
-      "temperature_low_alarm_enabled": {
-        "name": "Température · alarme basse activée"
-      },
-      "temperature_high_alarm_enabled": {
-        "name": "Température · alarme haute activée"
-      },
-      "salt_low_alarm_enabled": {
-        "name": "Salinité · alarme basse activée"
-      },
-      "salt_high_alarm_enabled": {
-        "name": "Salinité · alarme haute activée"
-      },
-      "biopool_mode_control": {
-        "name": "Système · mode Bio Pool"
-      },
-      "eco_mode": {
-        "name": "Système · mode ECO"
-      }
+      "boost_mode": {"name": "Électrolyse · mode Boost"},
+      "cover_control_enabled": {"name": "Couverture · contrôle"},
+      "internal_orp_control_enabled": {"name": "Électrolyse · Cl mV auto"},
+      "external_chlorine_control_enabled": {"name": "Électrolyse · Cl EXT auto"},
+      "internal_flow_sensor_enabled": {"name": "Débit · Flow Cell"},
+      "external_flow_sensor_enabled": {"name": "Débit · Flow"},
+      "ph_intelligent_dosing_enabled": {"name": "pH · dosage intelligent"},
+      "ph_pump_stop_enabled": {"name": "pH · Pump Stop"},
+      "temperature_low_alarm_enabled": {"name": "Température · alarme basse activée"},
+      "temperature_high_alarm_enabled": {"name": "Température · alarme haute activée"},
+      "salt_low_alarm_enabled": {"name": "Salinité · alarme basse activée"},
+      "salt_high_alarm_enabled": {"name": "Salinité · alarme haute activée"},
+      "biopool_mode_control": {"name": "Système · mode Bio Pool"},
+      "eco_mode": {"name": "Système · mode ECO"}
     },
-    "button": {
-      "reset_ph_pump_stop": {
-        "name": "pH · Pump Stop · réarmer"
-      }
-    },
+    "button": {"reset_ph_pump_stop": {"name": "pH · Pump Stop · réarmer"}},
     "time": {
-      "system_time": {
-        "name": "Horaires · heure appareil"
-      },
-      "timer_start": {
-        "name": "Horaires · démarrage"
-      },
-      "timer_stop": {
-        "name": "Horaires · arrêt"
-      }
+      "system_time": {"name": "Horaires · heure appareil"},
+      "timer_start": {"name": "Horaires · démarrage"},
+      "timer_stop": {"name": "Horaires · arrêt"}
     }
   }
 }
