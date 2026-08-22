@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .calibration_debug import COIL_CALIBRATION_MODE
+from .calibration_debug import RAW_CALIBRATION_SWITCHES
 from .entity import SmartNextEntity
 
 Setter = Callable[[bool], Awaitable[None]]
@@ -24,6 +24,7 @@ class SmartNextSwitchDescription(SwitchEntityDescription):
     data_key: str
     setter_name: str | None = None
     coil_address: int | None = None
+    capability_key: str | None = None
 
 
 SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
@@ -138,14 +139,18 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=True,
     ),
-    SmartNextSwitchDescription(
-        key="calibration_mode_raw",
-        name="Calibration TEST · Mode calibration (0x201)",
-        data_key="calibration_mode_raw",
-        coil_address=COIL_CALIBRATION_MODE,
-        entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=True,
-        icon="mdi:flask-outline",
+    *(
+        SmartNextSwitchDescription(
+            key=key,
+            name=name,
+            data_key=key,
+            coil_address=coil,
+            capability_key=capability,
+            entity_category=EntityCategory.CONFIG,
+            entity_registry_enabled_default=True,
+            icon="mdi:flask-outline",
+        )
+        for key, name, coil, capability in RAW_CALIBRATION_SWITCHES
     ),
 )
 
@@ -165,6 +170,8 @@ async def async_setup_entry(
             description,
         )
         for description in SWITCHES
+        if description.capability_key is None
+        or coordinator.data.get(description.capability_key, False)
     )
 
 
