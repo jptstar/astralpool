@@ -32,6 +32,7 @@ MANUFACTURER: Final = "AstralPool"
 MODEL: Final = "Smart Next"
 
 # Input registers (FC04).
+IR_CALIBRATION_RESPONSE: Final = 0x22
 IR_ELECTROLYSIS_FUNCTIONAL_TARGET: Final = 0x41
 IR_ELECTROLYSIS_PRODUCTION: Final = 0x42
 IR_ELECTROLYSIS_CURRENT: Final = 0x43
@@ -60,6 +61,9 @@ HR_SERIAL_HIGH: Final = 0x09
 HR_SERIAL_MIDDLE: Final = 0x0A
 HR_SERIAL_LOW: Final = 0x0B
 HR_TECHNOLOGIES_ENABLED: Final = 0x0D
+HR_WATCHDOG_TIME: Final = 0x10
+HR_WATCHDOG_CONFIG: Final = 0x11
+HR_CALIBRATION_VALUE: Final = 0x22
 HR_FLOW_CONTROL_WORD: Final = 0x30
 HR_ELECTROLYSIS_CONTROL_WORD: Final = 0x40
 HR_ELECTROLYSIS_NORMAL_SETPOINT: Final = 0x41
@@ -134,8 +138,10 @@ DI_SALT_MEASURE_UNRELIABLE: Final = 0xC01
 DI_SALT_VOLTAGE_INSUFFICIENT: Final = 0xC02
 
 # Coils (FC05).
-# General / display configuration.
+# General / display configuration and calibration workflow.
 COIL_BIOPOOL_MODE_ENABLE: Final = 0x0D9
+COIL_CALIBRATION_MODE: Final = 0x201
+COIL_CALIBRATION_RESPONSE_RESET: Final = 0x203
 COIL_ECO_MODE_ENABLE: Final = 0x230B
 
 # Flow configuration. On the Smart Next front panel these are named
@@ -159,19 +165,20 @@ COIL_PH_CALIBRATION_RESET: Final = 0x50C
 # pH output configuration.
 COIL_PH_INTELLIGENT_DOSING_ENABLE: Final = 0x566
 COIL_PH_PUMP_STOP_ENABLE: Final = 0x56C
-# 0x56D is specifically the pH pump-stop rearm, not a global alarm reset.
 COIL_PH_PUMP_STOP_RESET: Final = 0x56D
 
 # ORP configuration and maintenance commands.
 COIL_ORP_CONFIG_RESET: Final = 0x80A
 COIL_ORP_CALIBRATION_RESET: Final = 0x80C
 
-# Temperature and conductivity alarm configuration.
+# Temperature and conductivity alarm configuration and calibration maintenance.
 COIL_TEMPERATURE_LOW_ALARM_ENABLE: Final = 0xB0B
 COIL_TEMPERATURE_HIGH_ALARM_ENABLE: Final = 0xB0C
+COIL_TEMPERATURE_CALIBRATION_RESET: Final = 0xB0D
 COIL_TEMPERATURE_CONFIG_RESET: Final = 0xB0E
 COIL_SALT_LOW_ALARM_ENABLE: Final = 0xC0B
 COIL_SALT_HIGH_ALARM_ENABLE: Final = 0xC0C
+COIL_SALT_CALIBRATION_RESET: Final = 0xC0D
 COIL_SALT_CONFIG_RESET: Final = 0xC0E
 
 PH_INIT_ALLOWED_SECONDS: Final = (0, 60, 120, 240)
