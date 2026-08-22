@@ -69,3 +69,19 @@ def test_existing_device_can_be_reconfigured() -> None:
     assert "async_update_reload_and_abort" in source
     assert "unique_id=unique_id" in source
     assert "options={}" in source
+
+
+def test_restart_is_deferred_until_options_flow_closes() -> None:
+    """Never unload AstralPool while its own options request is still open."""
+    source = FLOW.read_text(encoding="utf-8")
+    assert "async_create_background_task" in source
+    assert "self.async_abort(reason=\"restart_started\")" in source
+    assert "await asyncio.sleep(1)" in source
+    assert "_async_restart_smartnext_background" in source
+
+
+def test_maintenance_uses_translatable_selector() -> None:
+    """Maintenance actions must use frontend translations instead of hard-coded labels."""
+    source = FLOW.read_text(encoding="utf-8")
+    assert "SelectSelector" in source
+    assert 'translation_key="maintenance_action"' in source
