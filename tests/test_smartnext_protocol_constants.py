@@ -36,6 +36,17 @@ def test_safe_control_coil_addresses() -> None:
     assert constants["COIL_ECO_MODE_ENABLE"] == 0x230B
 
 
+def test_documented_maintenance_reset_coil_addresses() -> None:
+    constants = _constant_values()
+    assert constants["COIL_FLOW_CONFIG_RESET"] == 0x30C
+    assert constants["COIL_PH_CONFIG_RESET"] == 0x50B
+    assert constants["COIL_PH_CALIBRATION_RESET"] == 0x50C
+    assert constants["COIL_ORP_CONFIG_RESET"] == 0x80A
+    assert constants["COIL_ORP_CALIBRATION_RESET"] == 0x80C
+    assert constants["COIL_TEMPERATURE_CONFIG_RESET"] == 0xB0E
+    assert constants["COIL_SALT_CONFIG_RESET"] == 0xC0E
+
+
 def test_diagnostic_and_alarm_limit_register_addresses() -> None:
     constants = _constant_values()
     assert constants["HR_PRODUCT_CAPACITY"] == 0x05
@@ -71,9 +82,9 @@ def test_polarity_reversal_period_encoding() -> None:
     }
 
 
-def test_unsafe_maintenance_writes_are_not_exposed() -> None:
+def test_unverified_maintenance_writes_are_not_exposed() -> None:
     constants = (ROOT / "const.py").read_text(encoding="utf-8")
     api = (ROOT / "api.py").read_text(encoding="utf-8")
-    for unsafe_name in ("CALIBRATION", "FACTORY_RESET", "TEST_MODE", "WATCHDOG"):
+    for unsafe_name in ("FACTORY_RESET", "TEST_MODE", "WATCHDOG"):
         assert unsafe_name not in constants
         assert f"async_set_{unsafe_name.lower()}" not in api
