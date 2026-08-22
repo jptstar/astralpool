@@ -2,28 +2,10 @@
   "title": "AstralPool",
   "config": {
     "step": {
-      "user": {
-        "title": "Ajouter un appareil AstralPool",
-        "description": "Choisissez l’appareil AstralPool à configurer.",
-        "data": {"device_type": "Type d’appareil"}
-      },
-      "connection": {
-        "title": "Connexion Modbus",
-        "description": "Configurez la connexion Modbus TCP pour {device_name}. Une passerelle externe Modbus RTU vers TCP est nécessaire.",
-        "data": {
-          "host": "Adresse IP / hôte de la passerelle",
-          "port": "Port TCP de la passerelle",
-          "unit_id": "Identifiant d’unité Modbus",
-          "timeout": "Délai d’attente (s)",
-          "reconnect_delay": "Délai de reconnexion (s)",
-          "scan_interval": "Intervalle d’interrogation (s)"
-        }
-      }
+      "user": {"title": "Ajouter un appareil AstralPool", "description": "Choisissez l’appareil AstralPool à configurer.", "data": {"device_type": "Type d’appareil"}},
+      "connection": {"title": "Connexion Modbus", "description": "Configurez la connexion Modbus TCP pour {device_name}. Une passerelle externe Modbus RTU vers TCP est nécessaire.", "data": {"host": "Adresse IP / hôte de la passerelle", "port": "Port TCP de la passerelle", "unit_id": "Identifiant d’unité Modbus", "timeout": "Délai d’attente (s)", "reconnect_delay": "Délai de reconnexion (s)", "scan_interval": "Intervalle d’interrogation (s)"}}
     },
-    "error": {
-      "cannot_connect": "Impossible de lire l’appareil AstralPool sélectionné. Vérifiez l’adresse et le port de la passerelle, le mode TCP vers RTU, les paramètres série et l’identifiant d’unité Modbus.",
-      "unknown": "Erreur inattendue."
-    },
+    "error": {"cannot_connect": "Impossible de lire l’appareil AstralPool sélectionné. Vérifiez l’adresse et le port de la passerelle, le mode TCP vers RTU, les paramètres série et l’identifiant d’unité Modbus.", "unknown": "Erreur inattendue."},
     "abort": {"already_configured": "Cette connexion AstralPool est déjà configurée."}
   },
   "options": {
@@ -57,424 +39,86 @@
       "calibration_timeout": "Aucune réponse de calibration n’a été reçue avant l’expiration du délai.",
       "calibration_failed": "Le Smart Next a renvoyé un résultat de calibration inattendu.",
       "calibration_mode_not_active": "Le mode calibration 0x201 n’a pas pu être activé.",
-      "treatment_not_halted": "Le Smart Next n’a pas confirmé l’arrêt du traitement après l’entrée en mode calibration.",
+      "treatment_not_halted": "Le Smart Next n’a pas confirmé l’arrêt du traitement et du dosage après l’entrée en mode calibration.",
       "calibration_response_not_cleared": "IR 0x22 n’a pas pu être remis à zéro alors que le mode calibration était actif.",
       "electrolysis_not_stopped": "L’arrêt complet de l’électrolyse n’a pas pu être confirmé. La procédure hydraulique est bloquée.",
-      "calibration_mode_rearm_failed": "Le mode calibration 0x201 n’a pas pu être réarmé après sa désactivation par le Smart Next. La production reste forcée à 0 %. Rétablissez immédiatement l’installation hydraulique.",
-      "calibration_mode_rearm_too_slow": "Le mode calibration est resté désactivé pendant 10 secondes ou plus. La production reste forcée à 0 %. Rétablissez immédiatement l’installation hydraulique.",
+      "electrolysis_safety_lost": "L’arrêt de l’électrolyse n’est plus confirmé. La production doit rester à 0 % jusqu’au rétablissement sûr de l’installation.",
+      "ph_pump_not_stopped": "La sortie réelle de la pompe doseuse pH n’est pas à 0 %. N’ouvrez pas le circuit hydraulique et ne retirez aucune sonde.",
+      "stabilization_wait": "La période obligatoire de stabilisation de 60 secondes n’est pas terminée. Attendez la minute complète.",
+      "measurement_not_confirmed_stable": "Après au moins 60 secondes, confirmez que la mesure affichée est stable avant de lancer la calibration.",
+      "ph_first_point_missing": "Le Smart Next n’indique plus que le premier point pH 7 est accepté. Recommencez la calibration standard depuis le pH 7.",
+      "calibration_mode_rearm_failed": "Le mode calibration 0x201 n’a pas pu être activé pour cette tentative. L’électrolyse reste forcée à 0 %.",
+      "calibration_mode_rearm_too_slow": "Le mode calibration 0x201 n’a pas pu être confirmé dans la fenêtre de sécurité. L’électrolyse reste forcée à 0 %.",
+      "calibration_mode_not_released": "Le mode calibration 0x201 n’a pas pu être libéré avant le retour au fonctionnement normal.",
       "flow_not_restored": "Le débit normal à travers l’électrolyseur n’est pas confirmé. La production reste à 0 % ; corrigez les vannes/la circulation puis relancez l’étape finale de rétablissement."
     },
     "step": {
-      "init": {
-        "title": "Réglages AstralPool",
-        "menu_options": {
-          "communication": "Paramètres de communication",
-          "maintenance": "Maintenance Smart Next"
-        }
-      },
-      "communication": {
-        "title": "Paramètres de communication AstralPool",
-        "data": {
-          "unit_id": "Identifiant d’unité Modbus",
-          "timeout": "Délai d’attente (s)",
-          "reconnect_delay": "Délai de reconnexion (s)",
-          "scan_interval": "Intervalle d’interrogation (s)"
-        }
-      },
-      "maintenance": {
-        "title": "Maintenance Smart Next",
-        "description": "Choisissez une procédure de maintenance guidée. Seules les procédures compatibles avec le matériel Smart Next détecté sont proposées.",
-        "data": {"maintenance_action": "Procédure"}
-      },
-      "maintenance_confirm": {
-        "title": "Confirmer la procédure de maintenance",
-        "description": "L’opération sélectionnée écrit directement dans le Smart Next en Modbus local. Confirmez uniquement si vous souhaitez exécuter maintenant la procédure sélectionnée.",
-        "data": {"confirm": "Je comprends et je souhaite exécuter cette procédure"}
-      },
-      "calibrate_sensor": {
-        "title": "Calibrer un capteur Smart Next",
-        "description": "Choisissez une procédure de calibration validée sur matériel réel. La salinité reste disponible uniquement via les entités brutes Calibration TEST tant que sa séquence n’est pas validée."
-      },
-      "calibrate_ph": {
-        "title": "Calibration pH",
-        "description": "La calibration Rapide corrige la sonde installée à partir d’une mesure de référence fiable. La calibration Standard nécessite de retirer la sonde et utilise successivement les solutions pH 7 puis pH 4."
-      },
-      "calibrate_ph_fast": {
-        "title": "pH — Calibration rapide",
-        "description": "Laissez la sonde pH installée et conservez la circulation normale. pH actuel du Smart Next : {current_ph}. Saisissez une valeur pH de référence fiable. Home Assistant active 0x201, efface IR 0x22 avec 0x203, écrit référence ×100 dans HR 0x22, déclenche 0x50F puis affiche le résultat.",
-        "data": {"reference_ph": "pH de référence fiable"}
-      },
-      "calibrate_ph_standard_prepare": {
-        "title": "pH Standard — Sécurité logicielle",
-        "description": "Conservez la filtration EN MARCHE et toutes les vannes en position de fonctionnement NORMALE. Avant toute manipulation hydraulique, Home Assistant mémorise l’état du Smart Next, désactive les deux capteurs de débit logiques et les commandes connues susceptibles de relancer l’électrolyse, force la production normale à 0 %, puis vérifie production = 0, courant = 0 et électrolyse arrêtée. Le mode calibration 0x201 n’est PAS encore activé.",
-        "data": {"confirm": "La circulation est normale ; sécuriser l’électrolyse à 0 %"}
-      },
-      "calibrate_ph_standard_filtration_off": {
-        "title": "pH Standard — Préparation 1/6 · Arrêter la filtration",
-        "description": "ÉTEIGNEZ la pompe de filtration. Vérifiez physiquement qu’elle est bien arrêtée avant de valider cette étape. L’électrolyse reste indépendamment forcée à 0 % par AstralPool.",
-        "data": {"filtration_off": "La pompe de filtration est ÉTEINTE et j’ai vérifié son arrêt"}
-      },
-      "calibrate_ph_standard_bypass_open": {
-        "title": "pH Standard — Préparation 2/6 · Ouvrir le bypass",
-        "description": "OUVREZ complètement la vanne de bypass de l’électrolyseur, puis validez.",
-        "data": {"bypass_open": "La vanne de bypass de l’électrolyseur est OUVERTE"}
-      },
-      "calibrate_ph_standard_inlet_closed": {
-        "title": "pH Standard — Préparation 3/6 · Fermer la vanne amont",
-        "description": "FERMEZ la vanne située en amont de l’électrolyseur, côté sondes / entrée de l’électrolyseur, puis validez.",
-        "data": {"inlet_closed": "La vanne amont / entrée est FERMÉE"}
-      },
-      "calibrate_ph_standard_outlet_closed": {
-        "title": "pH Standard — Préparation 4/6 · Fermer la vanne aval",
-        "description": "FERMEZ la vanne située en aval, à la sortie de l’électrolyseur, puis validez. La partie électrolyseur est maintenant isolée entre les deux vannes fermées.",
-        "data": {"outlet_closed": "La vanne aval / sortie est FERMÉE"}
-      },
-      "calibrate_ph_standard_probe_loosened": {
-        "title": "pH Standard — Préparation 5/6 · Desserrer la sonde pH",
-        "description": "DÉVISSEZ légèrement la sonde pH que vous allez démonter. Ne la retirez pas encore complètement. Validez lorsqu’elle est seulement desserrée.",
-        "data": {"probe_loosened": "La sonde pH est légèrement desserrée mais toujours en place"}
-      },
-      "calibrate_ph_standard_drain_pulse": {
-        "title": "pH Standard — Préparation 6/6 · Faire baisser le niveau d’eau",
-        "description": "OUVREZ très légèrement la vanne aval / sortie pendant au maximum 2 secondes afin de laisser entrer un peu d’air dans la partie isolée et faire baisser le niveau d’eau, puis REFERMEZ-LA immédiatement. Ne la laissez jamais ouverte plus de 2 secondes. Validez uniquement lorsque la vanne aval est de nouveau FERMÉE. Home Assistant lancera ensuite la session validée : 0x201 ON → 0x203 → IR 0x22 = 0.",
-        "data": {"drain_done": "J’ai ouvert la vanne aval au maximum 2 secondes et elle est de nouveau FERMÉE"}
-      },
-      "calibrate_ph_standard_ph7": {
-        "title": "pH Standard — Calibration 1/2 · pH 7",
-        "description": "Le mode calibration est actif et IR 0x22 a été effacé. Vous pouvez maintenant retirer complètement la sonde pH, la rincer/nettoyer, la plonger dans une solution étalon pH 7 fraîche, l’agiter doucement puis attendre environ 30 secondes jusqu’à stabilisation. Mesure actuelle : {current_ph}. Validez pour déclencher 0x50D. IR 0x22 = 16 confirme que le premier point est accepté et 0x201 reste actif pour le pH 4.",
-        "data": {"stable": "La sonde est propre, dans la solution pH 7 et la valeur est stable"}
-      },
-      "calibrate_ph_standard_ph4": {
-        "title": "pH Standard — Calibration 2/2 · pH 4",
-        "description": "Rincez/nettoyez à nouveau la sonde, plongez-la dans une solution étalon pH 4 fraîche, agitez-la doucement puis attendez environ 30 secondes jusqu’à stabilisation. Mesure actuelle : {current_ph}. Validez pour déclencher 0x50E. IR 0x22 = 1 confirme le succès. Le Smart Next désactive normalement 0x201 à cet instant ; AstralPool le réarme immédiatement tant que l’électrolyseur isolé n’a pas été rétabli.",
-        "data": {"stable": "La sonde est propre, dans la solution pH 4 et la valeur est stable"}
-      },
-      "calibrate_ph_standard_error": {
-        "title": "pH Standard — Erreur de calibration",
-        "description": "Résultat : {error}. Une erreur terminale peut désactiver 0x201 et autoriser la reprise de production. AstralPool réarme donc immédiatement 0x201 et maintient en parallèle le verrouillage indépendant de la production à 0 %. Le mode calibration ne doit pas rester désactivé pendant 10 secondes. Vous pouvez recommencer depuis pH 7 ou rétablir l’installation en sécurité."
-      },
-      "calibrate_ph_standard_restore": {
-        "title": "pH Standard — Rétablissement 1/5 · Remettre la sonde",
-        "description": "Rincez la sonde pH si nécessaire, remettez-la complètement en place et serrez-la correctement pendant que les deux vannes d’isolement de l’électrolyseur restent fermées et que la filtration reste ÉTEINTE.",
-        "data": {"probe_installed": "La sonde pH est complètement remise en place et serrée"}
-      },
-      "calibrate_ph_standard_restore_inlet": {
-        "title": "pH Standard — Rétablissement 2/5 · Ouvrir la vanne amont",
-        "description": "Filtration toujours ÉTEINTE et bypass toujours OUVERT : OUVREZ complètement la vanne amont / entrée de l’électrolyseur.",
-        "data": {"inlet_open": "La vanne amont / entrée est OUVERTE"}
-      },
-      "calibrate_ph_standard_restore_outlet": {
-        "title": "pH Standard — Rétablissement 3/5 · Ouvrir la vanne aval",
-        "description": "OUVREZ complètement la vanne aval / sortie de l’électrolyseur. Les deux vannes d’isolement doivent maintenant être ouvertes.",
-        "data": {"outlet_open": "La vanne aval / sortie est OUVERTE"}
-      },
-      "calibrate_ph_standard_restore_bypass": {
-        "title": "pH Standard — Rétablissement 4/5 · Fermer le bypass",
-        "description": "FERMEZ la vanne de bypass de l’électrolyseur afin de remettre le circuit hydraulique dans son chemin de fonctionnement normal à travers l’électrolyseur.",
-        "data": {"bypass_closed": "La vanne de bypass est FERMÉE et le circuit hydraulique est normal"}
-      },
-      "calibrate_ph_standard_restore_filtration": {
-        "title": "pH Standard — Rétablissement 5/5 · Redémarrer la filtration",
-        "description": "REMETTEZ la pompe de filtration EN MARCHE et vérifiez qu’elle tourne réellement et que l’eau circule à travers l’électrolyseur. Après confirmation, Home Assistant réactive les capteurs de débit logiques, vérifie le débit Smart Next, libère 0x201 et seulement ensuite restaure les anciens réglages d’électrolyse.",
-        "data": {"filtration_on": "La filtration est EN MARCHE et la circulation à travers l’électrolyseur est confirmée"}
-      },
-      "calibrate_orp_prepare": {
-        "title": "Redox / ORP — Sécurité logicielle",
-        "description": "Conservez la filtration EN MARCHE et toutes les vannes en position NORMALE. Home Assistant mémorise d’abord l’état du Smart Next, désactive les capteurs de débit logiques et les commandes connues susceptibles de relancer l’électrolyse, force la production normale à 0 %, puis vérifie production = 0, courant = 0 et électrolyse arrêtée. Le mode calibration 0x201 n’est PAS encore activé.",
-        "data": {"confirm": "La circulation est normale ; sécuriser l’électrolyse à 0 %"}
-      },
-      "calibrate_orp_filtration_off": {
-        "title": "Redox / ORP — Préparation 1/6 · Arrêter la filtration",
-        "description": "ÉTEIGNEZ la pompe de filtration. Vérifiez physiquement qu’elle est bien arrêtée avant de valider.",
-        "data": {"filtration_off": "La pompe de filtration est ÉTEINTE et j’ai vérifié son arrêt"}
-      },
-      "calibrate_orp_bypass_open": {
-        "title": "Redox / ORP — Préparation 2/6 · Ouvrir le bypass",
-        "description": "OUVREZ complètement la vanne de bypass de l’électrolyseur, puis validez.",
-        "data": {"bypass_open": "La vanne de bypass de l’électrolyseur est OUVERTE"}
-      },
-      "calibrate_orp_inlet_closed": {
-        "title": "Redox / ORP — Préparation 3/6 · Fermer la vanne amont",
-        "description": "FERMEZ la vanne située en amont de l’électrolyseur, côté sondes / entrée de l’électrolyseur, puis validez.",
-        "data": {"inlet_closed": "La vanne amont / entrée est FERMÉE"}
-      },
-      "calibrate_orp_outlet_closed": {
-        "title": "Redox / ORP — Préparation 4/6 · Fermer la vanne aval",
-        "description": "FERMEZ la vanne située en aval, à la sortie de l’électrolyseur, puis validez. La partie électrolyseur est maintenant isolée.",
-        "data": {"outlet_closed": "La vanne aval / sortie est FERMÉE"}
-      },
-      "calibrate_orp_probe_loosened": {
-        "title": "Redox / ORP — Préparation 5/6 · Desserrer la sonde ORP",
-        "description": "DÉVISSEZ légèrement la sonde ORP. Ne la retirez pas encore complètement. Validez lorsqu’elle est seulement desserrée.",
-        "data": {"probe_loosened": "La sonde ORP est légèrement desserrée mais toujours en place"}
-      },
-      "calibrate_orp_drain_pulse": {
-        "title": "Redox / ORP — Préparation 6/6 · Faire baisser le niveau d’eau",
-        "description": "OUVREZ très légèrement la vanne aval / sortie pendant au maximum 2 secondes afin de laisser entrer un peu d’air et faire baisser le niveau d’eau, puis REFERMEZ-LA immédiatement. Ne la laissez jamais ouverte plus de 2 secondes. Validez uniquement lorsque la vanne aval est de nouveau FERMÉE. Home Assistant lancera ensuite 0x201 ON → 0x203 → IR 0x22 = 0.",
-        "data": {"drain_done": "J’ai ouvert la vanne aval au maximum 2 secondes et elle est de nouveau FERMÉE"}
-      },
-      "calibrate_orp_470": {
-        "title": "Redox / ORP — Calibration à 470 mV",
-        "description": "Le mode calibration est actif et IR 0x22 a été effacé. Retirez complètement et nettoyez la sonde ORP. Plongez-la dans une solution étalon fraîche à 470 mV, idéalement autour de 25 °C, agitez-la doucement puis attendez environ 30 secondes jusqu’à stabilisation. Mesure actuelle : {current_orp} mV. Validez pour déclencher 0x80F. IR 0x22 = 1 signifie succès. AstralPool réarme immédiatement 0x201 après tout résultat terminal tant que l’électrolyseur reste isolé.",
-        "data": {"stable": "La sonde est propre, dans la solution 470 mV et la valeur est stable"}
-      },
-      "calibrate_orp_error": {
-        "title": "Redox / ORP — Erreur de calibration",
-        "description": "Résultat : {error}. Une erreur terminale peut désactiver 0x201. AstralPool le réarme immédiatement et maintient indépendamment l’électrolyse forcée à 0 %. Le mode calibration ne doit pas rester désactivé pendant 10 secondes. Vous pouvez réessayer à 470 mV ou rétablir l’installation en sécurité."
-      },
-      "calibrate_orp_restore": {
-        "title": "Redox / ORP — Rétablissement 1/5 · Remettre la sonde",
-        "description": "Rincez la sonde ORP si nécessaire, remettez-la complètement en place et serrez-la correctement pendant que les deux vannes d’isolement restent fermées et que la filtration reste ÉTEINTE.",
-        "data": {"probe_installed": "La sonde ORP est complètement remise en place et serrée"}
-      },
-      "calibrate_orp_restore_inlet": {
-        "title": "Redox / ORP — Rétablissement 2/5 · Ouvrir la vanne amont",
-        "description": "Filtration toujours ÉTEINTE et bypass toujours OUVERT : OUVREZ complètement la vanne amont / entrée.",
-        "data": {"inlet_open": "La vanne amont / entrée est OUVERTE"}
-      },
-      "calibrate_orp_restore_outlet": {
-        "title": "Redox / ORP — Rétablissement 3/5 · Ouvrir la vanne aval",
-        "description": "OUVREZ complètement la vanne aval / sortie. Les deux vannes d’isolement de l’électrolyseur doivent maintenant être ouvertes.",
-        "data": {"outlet_open": "La vanne aval / sortie est OUVERTE"}
-      },
-      "calibrate_orp_restore_bypass": {
-        "title": "Redox / ORP — Rétablissement 4/5 · Fermer le bypass",
-        "description": "FERMEZ la vanne de bypass de l’électrolyseur afin que le circuit hydraulique repasse par l’électrolyseur.",
-        "data": {"bypass_closed": "La vanne de bypass est FERMÉE et le circuit hydraulique est normal"}
-      },
-      "calibrate_orp_restore_filtration": {
-        "title": "Redox / ORP — Rétablissement 5/5 · Redémarrer la filtration",
-        "description": "REMETTEZ la pompe de filtration EN MARCHE et vérifiez la circulation réelle à travers l’électrolyseur. Home Assistant réactive ensuite les capteurs de débit logiques, vérifie le débit Smart Next, libère 0x201 et seulement après restaure l’ancien état d’électrolyse.",
-        "data": {"filtration_on": "La filtration est EN MARCHE et la circulation à travers l’électrolyseur est confirmée"}
-      },
-      "restore_calibration": {
-        "title": "Restaurer la calibration d’usine",
-        "description": "Choisissez un reset de calibration validé sur matériel réel."
-      },
-      "restore_ph_calibration": {
-        "title": "Restaurer la calibration usine du pH",
-        "description": "Laissez la sonde installée et conservez la circulation normale. Home Assistant exécute la séquence validée 0x201 ON → 0x203 → IR 0x22 = 0 → reset pH 0x50C. IR 0x22 = 1 confirme le succès et le Smart Next désactive normalement 0x201 automatiquement.",
-        "data": {"confirm": "Restaurer maintenant la calibration usine du pH"}
-      },
-      "restore_orp_calibration": {
-        "title": "Restaurer la calibration usine Redox / ORP",
-        "description": "Laissez la sonde installée et conservez la circulation normale. Home Assistant exécute la séquence validée 0x201 ON → 0x203 → IR 0x22 = 0 → reset ORP 0x80C. IR 0x22 = 1 confirme le succès et le Smart Next désactive normalement 0x201 automatiquement.",
-        "data": {"confirm": "Restaurer maintenant la calibration usine Redox / ORP"}
-      },
-      "calibrate_temperature": {
-        "title": "Calibration température",
-        "description": "Saisissez la température d’eau de référence fiable. La séquence validée écrit référence ×10 dans HR 0x22, déclenche 0xB0F puis attend 5 secondes.",
-        "data": {"temperature": "Température de référence"}
-      }
+      "init": {"title": "Réglages AstralPool", "menu_options": {"communication": "Paramètres de communication", "maintenance": "Maintenance Smart Next"}},
+      "communication": {"title": "Paramètres de communication AstralPool", "data": {"unit_id": "Identifiant d’unité Modbus", "timeout": "Délai d’attente (s)", "reconnect_delay": "Délai de reconnexion (s)", "scan_interval": "Intervalle d’interrogation (s)"}},
+      "maintenance": {"title": "Maintenance Smart Next", "description": "Choisissez une procédure de maintenance guidée. Seules les procédures compatibles avec le matériel Smart Next détecté sont proposées.", "data": {"maintenance_action": "Procédure"}},
+      "maintenance_confirm": {"title": "Confirmer la procédure de maintenance", "description": "L’opération sélectionnée écrit directement dans le Smart Next en Modbus local. Confirmez uniquement si vous souhaitez exécuter maintenant la procédure sélectionnée.", "data": {"confirm": "Je comprends et je souhaite exécuter cette procédure"}},
+      "calibrate_sensor": {"title": "Calibrer un capteur Smart Next", "description": "Choisissez une procédure de calibration validée sur matériel réel. La salinité reste disponible uniquement via les entités brutes Calibration TEST tant que sa séquence n’est pas validée."},
+      "calibrate_ph": {"title": "Calibration pH", "description": "La calibration Rapide corrige la sonde installée à partir d’une mesure de référence fiable. La calibration Standard nécessite de retirer la sonde et utilise successivement les solutions pH 7 puis pH 4."},
+      "calibrate_ph_fast": {"title": "pH — Calibration rapide", "description": "Laissez la sonde pH installée et conservez la circulation normale. pH actuel du Smart Next : {current_ph}. Saisissez une valeur pH de référence fiable. Home Assistant active 0x201, efface IR 0x22 avec 0x203, écrit référence ×100 dans HR 0x22, déclenche 0x50F puis affiche le résultat.", "data": {"reference_ph": "pH de référence fiable"}},
+
+      "calibrate_ph_standard_prepare": {"title": "pH Standard — Sécurité logicielle", "description": "Conservez la filtration EN MARCHE et toutes les vannes en position NORMALE. Home Assistant mémorise l’état du contrôleur, force la fonction Pump Stop pH sur ON comme protection supplémentaire, conserve la surveillance de débit active, désactive les commandes susceptibles de relancer l’électrolyse, force la production à 0 %, puis vérifie production, courant et fonctionnement à zéro. Pump Stop n’est pas considéré comme une preuve d’arrêt de la pompe doseuse : la sortie réelle de la pompe pH sera vérifiée après l’arrêt de la filtration. Le mode 0x201 n’est pas encore activé.", "data": {"confirm": "La circulation est normale ; sécuriser l’installation"}},
+      "calibrate_ph_standard_filtration_off": {"title": "pH Standard — Préparation 1/6 · Arrêter la filtration", "description": "ÉTEIGNEZ la pompe de filtration et vérifiez physiquement qu’elle est bien arrêtée. À la validation, Home Assistant exige aussi que la sortie réelle de la pompe doseuse pH (IR 0x58) soit à 0 % avant d’autoriser l’ouverture du circuit hydraulique.", "data": {"filtration_off": "La filtration est ÉTEINTE et j’ai vérifié physiquement l’arrêt de la pompe"}},
+      "calibrate_ph_standard_bypass_open": {"title": "pH Standard — Préparation 2/6 · Ouvrir le bypass", "description": "OUVREZ complètement la vanne de bypass de l’électrolyseur, puis validez.", "data": {"bypass_open": "La vanne de bypass de l’électrolyseur est OUVERTE"}},
+      "calibrate_ph_standard_inlet_closed": {"title": "pH Standard — Préparation 3/6 · Fermer la vanne amont", "description": "FERMEZ la vanne située en amont de l’électrolyseur, côté sondes / entrée, puis validez.", "data": {"inlet_closed": "La vanne amont / entrée est FERMÉE"}},
+      "calibrate_ph_standard_outlet_closed": {"title": "pH Standard — Préparation 4/6 · Fermer la vanne aval", "description": "FERMEZ la vanne située en aval, à la sortie de l’électrolyseur. La partie électrolyseur est maintenant isolée entre les deux vannes fermées.", "data": {"outlet_closed": "La vanne aval / sortie est FERMÉE"}},
+      "calibrate_ph_standard_probe_loosened": {"title": "pH Standard — Préparation 5/6 · Desserrer la sonde pH", "description": "DÉVISSEZ légèrement la sonde pH que vous allez retirer. Ne la retirez pas encore complètement.", "data": {"probe_loosened": "La sonde pH est légèrement desserrée mais toujours en place"}},
+      "calibrate_ph_standard_drain_pulse": {"title": "pH Standard — Préparation 6/6 · Faire baisser le niveau d’eau", "description": "OUVREZ très légèrement la vanne aval / sortie pendant au maximum 2 secondes afin de laisser entrer un peu d’air dans la partie isolée et faire baisser le niveau d’eau, puis REFERMEZ-LA immédiatement. Ne la laissez jamais ouverte plus de 2 secondes. Validez uniquement lorsqu’elle est de nouveau FERMÉE. Le mode calibration est encore OFF à cette étape.", "data": {"drain_done": "J’ai ouvert la vanne aval au maximum 2 secondes et elle est de nouveau FERMÉE"}},
+      "calibrate_ph_standard_ph7_immerse": {"title": "pH Standard — pH 7 · Plonger la sonde", "description": "Retirez maintenant complètement la sonde pH, rincez/nettoyez-la, plongez-la dans une solution étalon pH 7 fraîche et agitez-la doucement. Validez uniquement lorsque la sonde est complètement immergée ; cela démarre le délai obligatoire de stabilisation de 60 secondes.", "data": {"immersed": "La sonde pH propre est complètement plongée dans la solution pH 7"}},
+      "calibrate_ph_standard_ph7": {"title": "pH Standard — Calibration 1/2 · pH 7", "description": "La sonde doit rester au moins 60 secondes dans la solution pH 7. Temps minimum restant : {remaining} s. Mesure actuelle : {current_ph}. Après la minute complète, confirmez que la valeur est stable. Home Assistant active alors 0x201, vérifie l’arrêt du traitement, désactive temporairement les capteurs de débit, efface IR 0x22 avec 0x203 puis déclenche 0x50D. IR 0x22 = 16 confirme le premier point et 0x201 reste actif pour le pH 4.", "data": {"stable": "Au moins 60 secondes se sont écoulées et la mesure pH est stable"}},
+      "calibrate_ph_standard_ph4_immerse": {"title": "pH Standard — pH 4 · Plonger la sonde", "description": "Rincez/nettoyez la sonde, plongez-la dans une solution étalon pH 4 fraîche et agitez-la doucement. La session pH 7 acceptée reste active. Validez lorsque la sonde est complètement immergée pour démarrer un nouveau délai obligatoire de 60 secondes.", "data": {"immersed": "La sonde pH propre est complètement plongée dans la solution pH 4"}},
+      "calibrate_ph_standard_ph4": {"title": "pH Standard — Calibration 2/2 · pH 4", "description": "Laissez la sonde au moins 60 secondes dans la solution pH 4. Temps minimum restant : {remaining} s. Mesure actuelle : {current_ph}. Après la minute complète, confirmez que la valeur est stable pour déclencher 0x50E. IR 0x22 = 1 confirme le succès et le Smart Next désactive normalement 0x201. AstralPool ne réactive PAS le mode calibration après ce résultat terminal : les capteurs de débit sont immédiatement réactivés, la sortie pompe pH doit être à 0 %, et l’électrolyse reste forcée à 0 %.", "data": {"stable": "Au moins 60 secondes se sont écoulées et la mesure pH est stable"}},
+      "calibrate_ph_standard_error": {"title": "pH Standard — Erreur de calibration", "description": "Résultat : {error}. Une erreur terminale peut désactiver 0x201. AstralPool ne réactive pas automatiquement le mode calibration : les capteurs de débit sont remis en service aussi vite que possible et l’électrolyse reste forcée à 0 %. Choisissez Réessayer pour démarrer une nouvelle session de calibration, ou rétablissez l’installation en sécurité."},
+      "calibrate_ph_standard_next_sensor": {"title": "Calibration pH terminée — Calibrer aussi le Redox ?", "description": "La calibration pH à deux points a réussi. Les capteurs de débit ont déjà été réactivés et l’électrolyse reste forcée à 0 %. Comme la partie électrolyseur est toujours isolée, vous pouvez calibrer immédiatement le Redox / ORP sans refaire toute la préparation hydraulique, ou terminer et rétablir l’installation."},
+      "calibrate_ph_standard_chain_orp": {"title": "Continuer avec le Redox — Remettre la sonde pH", "description": "Avant de retirer la sonde ORP, rincez si nécessaire la sonde pH calibrée, remettez-la complètement en place et serrez-la correctement. Conservez la filtration ÉTEINTE, les deux vannes d’isolement FERMÉES et le bypass OUVERT.", "data": {"ph_reinstalled": "La sonde pH calibrée est remise en place et serrée"}},
+      "calibrate_ph_standard_chain_orp_immerse": {"title": "Continuer avec le Redox — Plonger à 470 mV", "description": "Desserez légèrement puis retirez la sonde ORP, nettoyez-la et plongez-la dans une solution étalon fraîche à 470 mV, idéalement autour de 25 °C. Validez une fois complètement immergée pour lancer le délai obligatoire de 60 secondes.", "data": {"orp_immersed": "La sonde ORP propre est complètement plongée dans la solution 470 mV"}},
+      "calibrate_ph_standard_restore": {"title": "pH Standard — Rétablissement 1/5 · Remettre la sonde", "description": "Rincez la sonde pH si nécessaire, remettez-la complètement en place et serrez-la. Les capteurs de débit ont déjà été réactivés ; la filtration reste ÉTEINTE, les deux vannes d’isolement restent FERMÉES et l’électrolyse reste forcée à 0 %.", "data": {"probe_installed": "La sonde pH est complètement remise en place et serrée"}},
+      "calibrate_ph_standard_restore_inlet": {"title": "pH Standard — Rétablissement 2/5 · Ouvrir la vanne amont", "description": "Filtration toujours ÉTEINTE et bypass toujours OUVERT : OUVREZ complètement la vanne amont / entrée.", "data": {"inlet_open": "La vanne amont / entrée est OUVERTE"}},
+      "calibrate_ph_standard_restore_outlet": {"title": "pH Standard — Rétablissement 3/5 · Ouvrir la vanne aval", "description": "OUVREZ complètement la vanne aval / sortie. Les deux vannes d’isolement doivent maintenant être ouvertes.", "data": {"outlet_open": "La vanne aval / sortie est OUVERTE"}},
+      "calibrate_ph_standard_restore_bypass": {"title": "pH Standard — Rétablissement 4/5 · Fermer le bypass", "description": "FERMEZ la vanne de bypass afin que le circuit hydraulique normal repasse à travers l’électrolyseur.", "data": {"bypass_closed": "La vanne de bypass est FERMÉE et le circuit hydraulique est normal"}},
+      "calibrate_ph_standard_restore_filtration": {"title": "pH Standard — Rétablissement 5/5 · Redémarrer la filtration", "description": "REMETTEZ la filtration EN MARCHE et vérifiez la circulation réelle à travers l’électrolyseur. Home Assistant vérifie ensuite le débit Smart Next puis, seulement après, restaure les anciens réglages d’électrolyse et la configuration Pump Stop d’origine.", "data": {"filtration_on": "La filtration est EN MARCHE et la circulation à travers l’électrolyseur est confirmée"}},
+
+      "calibrate_orp_prepare": {"title": "Redox / ORP — Sécurité logicielle", "description": "Conservez la filtration EN MARCHE et toutes les vannes en position NORMALE. Home Assistant mémorise l’état du contrôleur, force la fonction Pump Stop pH sur ON comme protection supplémentaire, conserve la surveillance de débit active, désactive les commandes susceptibles de relancer l’électrolyse, force l’électrolyse à 0 % et vérifie son arrêt. Le mode calibration 0x201 n’est pas encore activé.", "data": {"confirm": "La circulation est normale ; sécuriser l’installation"}},
+      "calibrate_orp_filtration_off": {"title": "Redox / ORP — Préparation 1/6 · Arrêter la filtration", "description": "ÉTEIGNEZ la pompe de filtration et vérifiez physiquement qu’elle est bien arrêtée. À la validation, Home Assistant exige aussi que la sortie réelle de la pompe doseuse pH (IR 0x58) soit à 0 % avant d’autoriser l’ouverture du circuit hydraulique.", "data": {"filtration_off": "La filtration est ÉTEINTE et j’ai vérifié physiquement l’arrêt de la pompe"}},
+      "calibrate_orp_bypass_open": {"title": "Redox / ORP — Préparation 2/6 · Ouvrir le bypass", "description": "OUVREZ complètement la vanne de bypass de l’électrolyseur.", "data": {"bypass_open": "La vanne de bypass de l’électrolyseur est OUVERTE"}},
+      "calibrate_orp_inlet_closed": {"title": "Redox / ORP — Préparation 3/6 · Fermer la vanne amont", "description": "FERMEZ la vanne amont / entrée, côté sondes.", "data": {"inlet_closed": "La vanne amont / entrée est FERMÉE"}},
+      "calibrate_orp_outlet_closed": {"title": "Redox / ORP — Préparation 4/6 · Fermer la vanne aval", "description": "FERMEZ la vanne aval / sortie. La partie électrolyseur est maintenant isolée.", "data": {"outlet_closed": "La vanne aval / sortie est FERMÉE"}},
+      "calibrate_orp_probe_loosened": {"title": "Redox / ORP — Préparation 5/6 · Desserrer la sonde ORP", "description": "DÉVISSEZ légèrement la sonde ORP. Ne la retirez pas encore complètement.", "data": {"probe_loosened": "La sonde ORP est légèrement desserrée mais toujours en place"}},
+      "calibrate_orp_drain_pulse": {"title": "Redox / ORP — Préparation 6/6 · Faire baisser le niveau d’eau", "description": "OUVREZ très légèrement la vanne aval / sortie pendant au maximum 2 secondes afin de laisser entrer un peu d’air et faire baisser le niveau d’eau, puis REFERMEZ-LA immédiatement. Ne la laissez jamais ouverte plus de 2 secondes. Le mode calibration est encore OFF à cette étape.", "data": {"drain_done": "J’ai ouvert la vanne aval au maximum 2 secondes et elle est de nouveau FERMÉE"}},
+      "calibrate_orp_immerse": {"title": "Redox / ORP — Plonger la sonde à 470 mV", "description": "Retirez complètement et nettoyez la sonde ORP. Plongez-la dans une solution étalon fraîche à 470 mV, idéalement autour de 25 °C, et agitez-la doucement. Validez lorsqu’elle est complètement immergée pour lancer le délai obligatoire de stabilisation de 60 secondes.", "data": {"immersed": "La sonde ORP propre est complètement plongée dans la solution 470 mV"}},
+      "calibrate_orp_470": {"title": "Redox / ORP — Calibration à 470 mV", "description": "Laissez la sonde immergée au moins 60 secondes. Temps minimum restant : {remaining} s. Mesure actuelle : {current_orp} mV. Après la minute complète, confirmez que la mesure est stable. Home Assistant active alors 0x201, vérifie l’arrêt du traitement, désactive temporairement les capteurs de débit, efface IR 0x22 avec 0x203 puis déclenche 0x80F. IR 0x22 = 1 signifie succès. Après tout résultat terminal, AstralPool ne réactive PAS 0x201 : les capteurs de débit sont immédiatement réactivés, la sortie pompe pH doit être à 0 %, et l’électrolyse reste forcée à 0 %.", "data": {"stable": "Au moins 60 secondes se sont écoulées et la mesure ORP est stable"}},
+      "calibrate_orp_error": {"title": "Redox / ORP — Erreur de calibration", "description": "Résultat : {error}. Une erreur terminale peut désactiver 0x201. AstralPool ne réactive pas automatiquement le mode calibration : les capteurs de débit sont remis en service aussi vite que possible et l’électrolyse reste forcée à 0 %. Réessayez à 470 mV ou rétablissez l’installation en sécurité."},
+      "calibrate_orp_next_sensor": {"title": "Calibration Redox terminée — Calibrer aussi le pH ?", "description": "La calibration ORP à 470 mV a réussi. Les capteurs de débit ont déjà été réactivés et l’électrolyse reste forcée à 0 %. Comme la partie électrolyseur est toujours isolée, vous pouvez calibrer immédiatement le pH sans refaire toute la préparation hydraulique, ou terminer et rétablir l’installation."},
+      "calibrate_orp_chain_ph": {"title": "Continuer avec le pH — Remettre la sonde ORP", "description": "Avant de retirer la sonde pH, rincez si nécessaire la sonde ORP calibrée, remettez-la complètement en place et serrez-la correctement. Conservez la filtration ÉTEINTE, les deux vannes d’isolement FERMÉES et le bypass OUVERT.", "data": {"orp_reinstalled": "La sonde ORP calibrée est remise en place et serrée"}},
+      "calibrate_orp_chain_ph7_immerse": {"title": "Continuer avec le pH — Plonger dans pH 7", "description": "Desserez légèrement puis retirez la sonde pH, nettoyez-la et plongez-la dans une solution étalon pH 7 fraîche. Validez une fois complètement immergée pour lancer le délai obligatoire de 60 secondes. Le point pH 4 suivra lorsque le pH 7 aura été accepté.", "data": {"ph_immersed": "La sonde pH propre est complètement plongée dans la solution pH 7"}},
+      "calibrate_orp_restore": {"title": "Redox / ORP — Rétablissement 1/5 · Remettre la sonde", "description": "Rincez la sonde ORP si nécessaire, remettez-la complètement en place et serrez-la. Les capteurs de débit ont déjà été réactivés ; la filtration reste ÉTEINTE, les deux vannes d’isolement restent FERMÉES et l’électrolyse reste forcée à 0 %.", "data": {"probe_installed": "La sonde ORP est complètement remise en place et serrée"}},
+      "calibrate_orp_restore_inlet": {"title": "Redox / ORP — Rétablissement 2/5 · Ouvrir la vanne amont", "description": "Filtration ÉTEINTE et bypass OUVERT : OUVREZ complètement la vanne amont / entrée.", "data": {"inlet_open": "La vanne amont / entrée est OUVERTE"}},
+      "calibrate_orp_restore_outlet": {"title": "Redox / ORP — Rétablissement 3/5 · Ouvrir la vanne aval", "description": "OUVREZ complètement la vanne aval / sortie.", "data": {"outlet_open": "La vanne aval / sortie est OUVERTE"}},
+      "calibrate_orp_restore_bypass": {"title": "Redox / ORP — Rétablissement 4/5 · Fermer le bypass", "description": "FERMEZ la vanne de bypass afin que le circuit hydraulique normal repasse à travers l’électrolyseur.", "data": {"bypass_closed": "La vanne de bypass est FERMÉE et le circuit hydraulique est normal"}},
+      "calibrate_orp_restore_filtration": {"title": "Redox / ORP — Rétablissement 5/5 · Redémarrer la filtration", "description": "REMETTEZ la filtration EN MARCHE et vérifiez la circulation réelle à travers l’électrolyseur. Home Assistant vérifie ensuite le débit Smart Next puis, seulement après, restaure les anciens réglages d’électrolyse et la configuration Pump Stop d’origine.", "data": {"filtration_on": "La filtration est EN MARCHE et la circulation à travers l’électrolyseur est confirmée"}},
+
+      "restore_calibration": {"title": "Restaurer la calibration d’usine", "description": "Choisissez un reset de calibration validé sur matériel réel."},
+      "restore_ph_calibration": {"title": "Restaurer la calibration usine du pH", "description": "Laissez la sonde installée et conservez la circulation normale. Home Assistant exécute la séquence validée 0x201 ON → 0x203 → IR 0x22 = 0 → reset pH 0x50C. IR 0x22 = 1 confirme le succès et le Smart Next désactive normalement 0x201 automatiquement.", "data": {"confirm": "Restaurer maintenant la calibration usine du pH"}},
+      "restore_orp_calibration": {"title": "Restaurer la calibration usine Redox / ORP", "description": "Laissez la sonde installée et conservez la circulation normale. Home Assistant exécute la séquence validée 0x201 ON → 0x203 → IR 0x22 = 0 → reset ORP 0x80C. IR 0x22 = 1 confirme le succès et le Smart Next désactive normalement 0x201 automatiquement.", "data": {"confirm": "Restaurer maintenant la calibration usine Redox / ORP"}},
+      "calibrate_temperature": {"title": "Calibration température", "description": "Saisissez la température d’eau de référence fiable. La séquence validée écrit référence ×10 dans HR 0x22, déclenche 0xB0F puis attend 5 secondes.", "data": {"temperature": "Température de référence"}}
     }
   },
-  "selector": {
-    "maintenance_action": {
-      "options": {
-        "reset_flow_config": "Débit / Flow Cell · réinitialiser la configuration",
-        "reset_ph_config": "pH · réinitialiser la configuration",
-        "reset_ph_calibration": "pH · réinitialiser la calibration",
-        "reset_orp_config": "ORP · réinitialiser la configuration",
-        "reset_orp_calibration": "ORP · réinitialiser la calibration",
-        "reset_temperature_config": "Température · réinitialiser la configuration des alarmes",
-        "reset_temperature_calibration": "Température · réinitialiser la calibration",
-        "reset_salt_config": "Salinité · réinitialiser la configuration des alarmes",
-        "reset_salt_calibration": "Salinité · réinitialiser la calibration",
-        "restart_device": "Système · redémarrer le Smart Next"
-      }
-    }
-  },
+  "selector": {"maintenance_action": {"options": {"reset_flow_config": "Débit / Flow Cell · réinitialiser la configuration", "reset_ph_config": "pH · réinitialiser la configuration", "reset_ph_calibration": "pH · réinitialiser la calibration", "reset_orp_config": "ORP · réinitialiser la configuration", "reset_orp_calibration": "ORP · réinitialiser la calibration", "reset_temperature_config": "Température · réinitialiser la configuration des alarmes", "reset_temperature_calibration": "Température · réinitialiser la calibration", "reset_salt_config": "Salinité · réinitialiser la configuration des alarmes", "reset_salt_calibration": "Salinité · réinitialiser la calibration", "restart_device": "Système · redémarrer le Smart Next"}}},
   "entity": {
     "sensor": {
-      "electrolysis_rated_capacity": {"name": "Électrolyse · capacité nominale"},
-      "boost_remaining_time": {"name": "Électrolyse · Boost restant"},
-      "temperature": {"name": "Température · eau"},
-      "temperature_min": {"name": "Température · seuil bas actuel"},
-      "temperature_max": {"name": "Température · seuil haut actuel"},
-      "salt": {"name": "Salinité · mesure"},
-      "salt_min": {"name": "Salinité · seuil bas actuel"},
-      "salt_max": {"name": "Salinité · seuil haut actuel"},
-      "ph": {"name": "pH · mesure"},
-      "ph_low_alarm_limit": {"name": "pH · seuil alarme bas"},
-      "ph_high_alarm_limit": {"name": "pH · seuil alarme haut"},
-      "ph_dosage_elapsed": {"name": "pH · dosage écoulé"},
-      "ph_pump_output": {"name": "pH · sortie pompe"},
-      "ph_total_hours": {"name": "pH · heures totales de dosage"},
-      "ph_partial_hours": {"name": "pH · heures partielles de dosage"},
-      "orp": {"name": "ORP · mesure"},
-      "orp_low_alarm_limit": {"name": "ORP · seuil alarme bas"},
-      "orp_high_alarm_limit": {"name": "ORP · seuil alarme haut"},
-      "electrolysis_functional_target": {"name": "Électrolyse · consigne active"},
-      "electrolysis_production": {"name": "Électrolyse · production"},
-      "electrolysis_current": {"name": "Électrolyse · courant"},
-      "electrolysis_voltage": {"name": "Électrolyse · tension"},
-      "electrolysis_chlorine_production": {"name": "Électrolyse · production chlore"},
-      "electrolysis_total_hours": {"name": "Électrolyse · heures totales"},
-      "electrolysis_partial_hours": {"name": "Électrolyse · heures partielles"},
-      "ambient_temperature": {"name": "Température · air ambiant"},
-      "inlet_temperature": {"name": "Température · eau entrée"},
-      "outlet_temperature": {"name": "Température · eau sortie"},
-      "gas_return_temperature": {"name": "Température · retour gaz"},
-      "coil_temperature": {"name": "Température · batterie"},
-      "gas_exhaust_temperature": {"name": "Température · refoulement gaz"},
-      "fan_speed": {"name": "Ventilateur · vitesse"},
-      "compressor_current": {"name": "Compresseur · courant"},
-      "compressor_frequency": {"name": "Compresseur · fréquence"},
-      "expansion_valve_step": {"name": "Détendeur · position"},
-      "hp_cycles": {"name": "Compteur · PAC · cycles"},
-      "compressor_starts": {"name": "Compteur · Compresseur · démarrages"},
-      "product_code": {"name": "Identification · code produit"},
-      "alarm_count_inlet_sensor_failure": {"name": "Compteur alarme · Eau · sonde température entrée"},
-      "alarm_count_outlet_sensor_failure": {"name": "Compteur alarme · Eau · sonde température sortie"},
-      "alarm_count_heating_overheat": {"name": "Compteur alarme · Chauffage · surchauffe"},
-      "alarm_count_gas_exhaust_too_high": {"name": "Compteur alarme · Compresseur · température refoulement élevée"},
-      "alarm_count_low_ambient_protection": {"name": "Compteur alarme · Air · température ambiante basse"},
-      "alarm_count_cooling_pipe_too_high": {"name": "Compteur alarme · Refroidissement · température tuyau élevée"},
-      "alarm_count_low_pressure": {"name": "Compteur alarme · Pression · basse"},
-      "alarm_count_high_pressure": {"name": "Compteur alarme · Pression · haute"},
-      "alarm_count_ambient_sensor_failure": {"name": "Compteur alarme · Air · sonde température"},
-      "alarm_count_water_flow_abnormal": {"name": "Compteur alarme · Eau · débit anormal"},
-      "alarm_count_winter_antifreeze": {"name": "Compteur alarme · Antigel · protection hiver"},
-      "alarm_count_software_control_failure": {"name": "Compteur alarme · Système · contrôle logiciel"},
-      "alarm_count_cooling_too_cold": {"name": "Compteur alarme · Refroidissement · température trop basse"},
-      "alarm_count_heating_coil_sensor_failure": {"name": "Compteur alarme · Chauffage · sonde batterie"},
-      "alarm_count_gas_return_sensor_failure": {"name": "Compteur alarme · Compresseur · sonde retour gaz"},
-      "alarm_count_current_detection_failure": {"name": "Compteur alarme · Compresseur · détection courant"},
-      "alarm_count_pfc_module_protection": {"name": "Compteur alarme · PFC · protection module"},
-      "alarm_count_exhaust_temperature_failure": {"name": "Compteur alarme · Compresseur · sonde température refoulement"},
-      "alarm_count_main_drive_communication_failure": {"name": "Compteur alarme · Inverter · communication carte principale"},
-      "alarm_count_eeprom_failure": {"name": "Compteur alarme · Mémoire · EEPROM"},
-      "alarm_count_pfc_temperature_sensor_failure": {"name": "Compteur alarme · PFC · sonde température interne"},
-      "alarm_count_module_board_failure": {"name": "Compteur alarme · Inverter · carte module"},
-      "alarm_count_vdc_overvoltage": {"name": "Compteur alarme · VDC · surtension"},
-      "alarm_count_compressor_overcurrent": {"name": "Compteur alarme · Compresseur · surintensité"},
-      "alarm_count_dc_fan_failure": {"name": "Compteur alarme · Ventilateur · moteur DC"},
-      "alarm_count_pfc_overtemperature": {"name": "Compteur alarme · PFC · surchauffe"},
-      "alarm_count_input_power_failure": {"name": "Compteur alarme · Alimentation · défaut"},
-      "alarm_count_controller_main_communication_failure": {"name": "Compteur alarme · Communication · contrôleur–carte principale"},
-      "alarm_count_vdc_undervoltage": {"name": "Compteur alarme · VDC · sous-tension"},
-      "alarm_count_overcurrent": {"name": "Compteur alarme · Système · surintensité"},
-      "alarm_count_drive_ambient_sensor_failure": {"name": "Compteur alarme · Inverter · sonde température ambiante"},
-      "alarm_count_ipm_overtemperature": {"name": "Compteur alarme · IPM · surchauffe"}
+      "electrolysis_rated_capacity": {"name": "Électrolyse · capacité nominale"}, "boost_remaining_time": {"name": "Électrolyse · Boost restant"}, "temperature": {"name": "Température · eau"}, "temperature_min": {"name": "Température · seuil bas actuel"}, "temperature_max": {"name": "Température · seuil haut actuel"}, "salt": {"name": "Salinité · mesure"}, "salt_min": {"name": "Salinité · seuil bas actuel"}, "salt_max": {"name": "Salinité · seuil haut actuel"}, "ph": {"name": "pH · mesure"}, "ph_low_alarm_limit": {"name": "pH · seuil alarme bas"}, "ph_high_alarm_limit": {"name": "pH · seuil alarme haut"}, "ph_dosage_elapsed": {"name": "pH · dosage écoulé"}, "ph_pump_output": {"name": "pH · sortie pompe"}, "ph_total_hours": {"name": "pH · heures totales de dosage"}, "ph_partial_hours": {"name": "pH · heures partielles de dosage"}, "orp": {"name": "ORP · mesure"}, "orp_low_alarm_limit": {"name": "ORP · seuil alarme bas"}, "orp_high_alarm_limit": {"name": "ORP · seuil alarme haut"}, "electrolysis_functional_target": {"name": "Électrolyse · consigne active"}, "electrolysis_production": {"name": "Électrolyse · production"}, "electrolysis_current": {"name": "Électrolyse · courant"}, "electrolysis_voltage": {"name": "Électrolyse · tension"}, "electrolysis_chlorine_production": {"name": "Électrolyse · production chlore"}, "electrolysis_total_hours": {"name": "Électrolyse · heures totales"}, "electrolysis_partial_hours": {"name": "Électrolyse · heures partielles"}, "ambient_temperature": {"name": "Température · air ambiant"}, "inlet_temperature": {"name": "Température · eau entrée"}, "outlet_temperature": {"name": "Température · eau sortie"}, "gas_return_temperature": {"name": "Température · retour gaz"}, "coil_temperature": {"name": "Température · batterie"}, "gas_exhaust_temperature": {"name": "Température · refoulement gaz"}, "fan_speed": {"name": "Ventilateur · vitesse"}, "compressor_current": {"name": "Compresseur · courant"}, "compressor_frequency": {"name": "Compresseur · fréquence"}, "expansion_valve_step": {"name": "Détendeur · position"}, "hp_cycles": {"name": "Compteur · PAC · cycles"}, "compressor_starts": {"name": "Compteur · Compresseur · démarrages"}, "product_code": {"name": "Identification · code produit"}, "alarm_count_inlet_sensor_failure": {"name": "Compteur alarme · Eau · sonde température entrée"}, "alarm_count_outlet_sensor_failure": {"name": "Compteur alarme · Eau · sonde température sortie"}, "alarm_count_heating_overheat": {"name": "Compteur alarme · Chauffage · surchauffe"}, "alarm_count_gas_exhaust_too_high": {"name": "Compteur alarme · Compresseur · température refoulement élevée"}, "alarm_count_low_ambient_protection": {"name": "Compteur alarme · Air · température ambiante basse"}, "alarm_count_cooling_pipe_too_high": {"name": "Compteur alarme · Refroidissement · température tuyau élevée"}, "alarm_count_low_pressure": {"name": "Compteur alarme · Pression · basse"}, "alarm_count_high_pressure": {"name": "Compteur alarme · Pression · haute"}, "alarm_count_ambient_sensor_failure": {"name": "Compteur alarme · Air · sonde température"}, "alarm_count_water_flow_abnormal": {"name": "Compteur alarme · Eau · débit anormal"}, "alarm_count_winter_antifreeze": {"name": "Compteur alarme · Antigel · protection hiver"}, "alarm_count_software_control_failure": {"name": "Compteur alarme · Système · contrôle logiciel"}, "alarm_count_cooling_too_cold": {"name": "Compteur alarme · Refroidissement · température trop basse"}, "alarm_count_heating_coil_sensor_failure": {"name": "Compteur alarme · Chauffage · sonde batterie"}, "alarm_count_gas_return_sensor_failure": {"name": "Compteur alarme · Compresseur · sonde retour gaz"}, "alarm_count_current_detection_failure": {"name": "Compteur alarme · Compresseur · détection courant"}, "alarm_count_pfc_module_protection": {"name": "Compteur alarme · PFC · protection module"}, "alarm_count_exhaust_temperature_failure": {"name": "Compteur alarme · Compresseur · sonde température refoulement"}, "alarm_count_main_drive_communication_failure": {"name": "Compteur alarme · Inverter · communication carte principale"}, "alarm_count_eeprom_failure": {"name": "Compteur alarme · Mémoire · EEPROM"}, "alarm_count_pfc_temperature_sensor_failure": {"name": "Compteur alarme · PFC · sonde température interne"}, "alarm_count_module_board_failure": {"name": "Compteur alarme · Inverter · carte module"}, "alarm_count_vdc_overvoltage": {"name": "Compteur alarme · VDC · surtension"}, "alarm_count_compressor_overcurrent": {"name": "Compteur alarme · Compresseur · surintensité"}, "alarm_count_dc_fan_failure": {"name": "Compteur alarme · Ventilateur · moteur DC"}, "alarm_count_pfc_overtemperature": {"name": "Compteur alarme · PFC · surchauffe"}, "alarm_count_input_power_failure": {"name": "Compteur alarme · Alimentation · défaut"}, "alarm_count_controller_main_communication_failure": {"name": "Compteur alarme · Communication · contrôleur–carte principale"}, "alarm_count_vdc_undervoltage": {"name": "Compteur alarme · VDC · sous-tension"}, "alarm_count_overcurrent": {"name": "Compteur alarme · Système · surintensité"}, "alarm_count_drive_ambient_sensor_failure": {"name": "Compteur alarme · Inverter · sonde température ambiante"}, "alarm_count_ipm_overtemperature": {"name": "Compteur alarme · IPM · surchauffe"}
     },
     "binary_sensor": {
-      "general_alarm": {"name": "Alarme · Système · générale"},
-      "flow_alarm": {"name": "Alarme · Débit · générale"},
-      "internal_flow_alarm": {"name": "Alarme · Débit · interne / bulle d’air"},
-      "external_flow_switch_alarm": {"name": "Alarme · Débit · détecteur externe"},
-      "internal_air_bubble_detected": {"name": "Débit · bulle d’air interne détectée"},
-      "external_flow_switch_open": {"name": "Débit · détecteur externe ouvert"},
-      "electrolysis_check_cell_alarm": {"name": "Alarme · Électrolyse · contrôle cellule"},
-      "electrolysis_low_conductivity_alarm": {"name": "Alarme · Électrolyse · conductivité basse"},
-      "electrolysis_high_conductivity_alarm": {"name": "Alarme · Électrolyse · conductivité élevée"},
-      "ph_low_alarm": {"name": "Alarme · pH · basse"},
-      "ph_high_alarm": {"name": "Alarme · pH · haute"},
-      "ph_pump_stop_alarm": {"name": "Alarme · pH · Pump Stop"},
-      "ph_fuse_alarm": {"name": "Alarme · pH · fusible"},
-      "orp_low_alarm": {"name": "Alarme · ORP · basse"},
-      "orp_high_alarm": {"name": "Alarme · ORP · haute"},
-      "temperature_low_alarm": {"name": "Alarme · Température · basse"},
-      "temperature_high_alarm": {"name": "Alarme · Température · haute"},
-      "salt_low_alarm": {"name": "Alarme · Salinité · basse"},
-      "salt_high_alarm": {"name": "Alarme · Salinité · haute"},
-      "ph_measure_unreliable": {"name": "Alarme · pH · mesure non fiable"},
-      "orp_measure_unreliable": {"name": "Alarme · ORP · mesure non fiable"},
-      "temperature_measure_unreliable": {"name": "Alarme · Température · mesure non fiable"},
-      "salt_measure_unreliable": {"name": "Alarme · Salinité · mesure non fiable"},
-      "salt_current_insufficient": {"name": "Alarme · Salinité · courant insuffisant"},
-      "salt_voltage_insufficient": {"name": "Alarme · Salinité · tension insuffisante"},
-      "treatment_halted": {"name": "Alarme · Système · traitement arrêté"},
-      "electrolysis_running": {"name": "Électrolyse · fonctionnement"},
-      "electrolysis_reverse_polarity": {"name": "Électrolyse · polarité inversée"},
-      "cover_input": {"name": "Couverture · entrée active"},
-      "cover_active": {"name": "Couverture · active"},
-      "ph_initializing": {"name": "pH · initialisation"},
-      "ph_dosing_active": {"name": "pH · dosage en cours"},
-      "biopool_mode": {"name": "Système · mode Bio Pool"},
-      "external_chlorine_control_input": {"name": "Électrolyse · entrée chlore externe"},
-      "internal_orp_control_stop": {"name": "Électrolyse · arrêt par ORP interne"},
-      "external_control_stop": {"name": "Électrolyse · arrêt par régulation externe"},
-      "running": {"name": "PAC · en marche"},
-      "compressor_running": {"name": "Compresseur · en marche"},
-      "defrost": {"name": "PAC · dégivrage"},
-      "filter_priority_mode": {"name": "Filtration · mode permanent"},
-      "timer_enabled": {"name": "Minuterie · active"},
-      "alarm": {"name": "Alarme · Système · générale"},
-      "alarm_inlet_sensor_failure": {"name": "Alarme · Eau · sonde température entrée"},
-      "alarm_outlet_sensor_failure": {"name": "Alarme · Eau · sonde température sortie"},
-      "alarm_heating_overheat": {"name": "Alarme · Chauffage · surchauffe"},
-      "alarm_gas_exhaust_too_high": {"name": "Alarme · Compresseur · température refoulement élevée"},
-      "alarm_low_ambient_protection": {"name": "Alarme · Air · température ambiante basse"},
-      "alarm_cooling_pipe_too_high": {"name": "Alarme · Refroidissement · température tuyau élevée"},
-      "alarm_low_pressure": {"name": "Alarme · Pression · basse"},
-      "alarm_high_pressure": {"name": "Alarme · Pression · haute"},
-      "alarm_ambient_sensor_failure": {"name": "Alarme · Air · sonde température"},
-      "alarm_water_flow_abnormal": {"name": "Alarme · Eau · débit anormal"},
-      "alarm_winter_antifreeze": {"name": "Alarme · Antigel · protection hiver"},
-      "alarm_software_control_failure": {"name": "Alarme · Système · contrôle logiciel"},
-      "alarm_cooling_too_cold": {"name": "Alarme · Refroidissement · température trop basse"},
-      "alarm_heating_coil_sensor_failure": {"name": "Alarme · Chauffage · sonde batterie"},
-      "alarm_gas_return_sensor_failure": {"name": "Alarme · Compresseur · sonde retour gaz"},
-      "alarm_current_detection_failure": {"name": "Alarme · Compresseur · détection courant"},
-      "alarm_pfc_module_protection": {"name": "Alarme · PFC · protection module"},
-      "alarm_exhaust_temperature_failure": {"name": "Alarme · Compresseur · sonde température refoulement"},
-      "alarm_main_drive_communication_failure": {"name": "Alarme · Inverter · communication carte principale"},
-      "alarm_eeprom_failure": {"name": "Alarme · Mémoire · EEPROM"},
-      "alarm_pfc_temperature_sensor_failure": {"name": "Alarme · PFC · sonde température interne"},
-      "alarm_module_board_failure": {"name": "Alarme · Inverter · carte module"},
-      "alarm_vdc_overvoltage": {"name": "Alarme · VDC · surtension"},
-      "alarm_compressor_overcurrent": {"name": "Alarme · Compresseur · surintensité"},
-      "alarm_dc_fan_failure": {"name": "Alarme · Ventilateur · moteur DC"},
-      "alarm_pfc_overtemperature": {"name": "Alarme · PFC · surchauffe"},
-      "alarm_input_power_failure": {"name": "Alarme · Alimentation · défaut"},
-      "alarm_controller_main_communication_failure": {"name": "Alarme · Communication · contrôleur–carte principale"},
-      "alarm_vdc_undervoltage": {"name": "Alarme · VDC · sous-tension"},
-      "alarm_overcurrent": {"name": "Alarme · Système · surintensité"},
-      "alarm_drive_ambient_sensor_failure": {"name": "Alarme · Inverter · sonde température ambiante"},
-      "alarm_ipm_overtemperature": {"name": "Alarme · IPM · surchauffe"}
+      "general_alarm": {"name": "Alarme · Système · générale"}, "flow_alarm": {"name": "Alarme · Débit · générale"}, "internal_flow_alarm": {"name": "Alarme · Débit · interne / bulle d’air"}, "external_flow_switch_alarm": {"name": "Alarme · Débit · détecteur externe"}, "internal_air_bubble_detected": {"name": "Débit · bulle d’air interne détectée"}, "external_flow_switch_open": {"name": "Débit · détecteur externe ouvert"}, "electrolysis_check_cell_alarm": {"name": "Alarme · Électrolyse · contrôle cellule"}, "electrolysis_low_conductivity_alarm": {"name": "Alarme · Électrolyse · conductivité basse"}, "electrolysis_high_conductivity_alarm": {"name": "Alarme · Électrolyse · conductivité élevée"}, "ph_low_alarm": {"name": "Alarme · pH · basse"}, "ph_high_alarm": {"name": "Alarme · pH · haute"}, "ph_pump_stop_alarm": {"name": "Alarme · pH · Pump Stop"}, "ph_fuse_alarm": {"name": "Alarme · pH · fusible"}, "orp_low_alarm": {"name": "Alarme · ORP · basse"}, "orp_high_alarm": {"name": "Alarme · ORP · haute"}, "temperature_low_alarm": {"name": "Alarme · Température · basse"}, "temperature_high_alarm": {"name": "Alarme · Température · haute"}, "salt_low_alarm": {"name": "Alarme · Salinité · basse"}, "salt_high_alarm": {"name": "Alarme · Salinité · haute"}, "ph_measure_unreliable": {"name": "Alarme · pH · mesure non fiable"}, "orp_measure_unreliable": {"name": "Alarme · ORP · mesure non fiable"}, "temperature_measure_unreliable": {"name": "Alarme · Température · mesure non fiable"}, "salt_measure_unreliable": {"name": "Alarme · Salinité · mesure non fiable"}, "salt_current_insufficient": {"name": "Alarme · Salinité · courant insuffisant"}, "salt_voltage_insufficient": {"name": "Alarme · Salinité · tension insuffisante"}, "treatment_halted": {"name": "Alarme · Système · traitement arrêté"}, "electrolysis_running": {"name": "Électrolyse · fonctionnement"}, "electrolysis_reverse_polarity": {"name": "Électrolyse · polarité inversée"}, "cover_input": {"name": "Couverture · entrée active"}, "cover_active": {"name": "Couverture · active"}, "ph_initializing": {"name": "pH · initialisation"}, "ph_dosing_active": {"name": "pH · dosage en cours"}, "biopool_mode": {"name": "Système · mode Bio Pool"}, "external_chlorine_control_input": {"name": "Électrolyse · entrée chlore externe"}, "internal_orp_control_stop": {"name": "Électrolyse · arrêt par ORP interne"}, "external_control_stop": {"name": "Électrolyse · arrêt par régulation externe"}, "running": {"name": "PAC · en marche"}, "compressor_running": {"name": "Compresseur · en marche"}, "defrost": {"name": "PAC · dégivrage"}, "filter_priority_mode": {"name": "Filtration · mode permanent"}, "timer_enabled": {"name": "Minuterie · active"}, "alarm": {"name": "Alarme · Système · générale"}, "alarm_inlet_sensor_failure": {"name": "Alarme · Eau · sonde température entrée"}, "alarm_outlet_sensor_failure": {"name": "Alarme · Eau · sonde température sortie"}, "alarm_heating_overheat": {"name": "Alarme · Chauffage · surchauffe"}, "alarm_gas_exhaust_too_high": {"name": "Alarme · Compresseur · température refoulement élevée"}, "alarm_low_ambient_protection": {"name": "Alarme · Air · température ambiante basse"}, "alarm_cooling_pipe_too_high": {"name": "Alarme · Refroidissement · température tuyau élevée"}, "alarm_low_pressure": {"name": "Alarme · Pression · basse"}, "alarm_high_pressure": {"name": "Alarme · Pression · haute"}, "alarm_ambient_sensor_failure": {"name": "Alarme · Air · sonde température"}, "alarm_water_flow_abnormal": {"name": "Alarme · Eau · débit anormal"}, "alarm_winter_antifreeze": {"name": "Alarme · Antigel · protection hiver"}, "alarm_software_control_failure": {"name": "Alarme · Système · contrôle logiciel"}, "alarm_cooling_too_cold": {"name": "Alarme · Refroidissement · température trop basse"}, "alarm_heating_coil_sensor_failure": {"name": "Alarme · Chauffage · sonde batterie"}, "alarm_gas_return_sensor_failure": {"name": "Alarme · Compresseur · sonde retour gaz"}, "alarm_current_detection_failure": {"name": "Alarme · Compresseur · détection courant"}, "alarm_pfc_module_protection": {"name": "Alarme · PFC · protection module"}, "alarm_exhaust_temperature_failure": {"name": "Alarme · Compresseur · sonde température refoulement"}, "alarm_main_drive_communication_failure": {"name": "Alarme · Inverter · communication carte principale"}, "alarm_eeprom_failure": {"name": "Alarme · Mémoire · EEPROM"}, "alarm_pfc_temperature_sensor_failure": {"name": "Alarme · PFC · sonde température interne"}, "alarm_module_board_failure": {"name": "Alarme · Inverter · carte module"}, "alarm_vdc_overvoltage": {"name": "Alarme · VDC · surtension"}, "alarm_compressor_overcurrent": {"name": "Alarme · Compresseur · surintensité"}, "alarm_dc_fan_failure": {"name": "Alarme · Ventilateur · moteur DC"}, "alarm_pfc_overtemperature": {"name": "Alarme · PFC · surchauffe"}, "alarm_input_power_failure": {"name": "Alarme · Alimentation · défaut"}, "alarm_controller_main_communication_failure": {"name": "Alarme · Communication · contrôleur–carte principale"}, "alarm_vdc_undervoltage": {"name": "Alarme · VDC · sous-tension"}, "alarm_overcurrent": {"name": "Alarme · Système · surintensité"}, "alarm_drive_ambient_sensor_failure": {"name": "Alarme · Inverter · sonde température ambiante"}, "alarm_ipm_overtemperature": {"name": "Alarme · IPM · surchauffe"}
     },
-    "number": {
-      "temperature_min_setpoint": {"name": "Température · seuil bas réglé"},
-      "temperature_max_setpoint": {"name": "Température · seuil haut réglé"},
-      "salt_min_setpoint": {"name": "Salinité · seuil bas réglé"},
-      "salt_max_setpoint": {"name": "Salinité · seuil haut réglé"},
-      "ph_setpoint": {"name": "pH · consigne"},
-      "ph_dosage_limit": {"name": "pH · Pump Stop · durée maximale"},
-      "orp_setpoint": {"name": "ORP · consigne"},
-      "electrolysis_normal_setpoint": {"name": "Électrolyse · production normale"},
-      "electrolysis_cover_setpoint": {"name": "Électrolyse · production couverture"}
-    },
-    "select": {
-      "ph_initialization_time": {
-        "name": "pH · durée d’initialisation",
-        "state": {"off": "Désactivé", "seconds_60": "60 secondes", "seconds_120": "120 secondes", "seconds_240": "240 secondes"}
-      },
-      "polarity_reversal_period": {
-        "name": "Électrolyse · période d’inversion de polarité",
-        "state": {"hours_2": "2 heures", "hours_3": "3 heures", "hours_4": "4 heures", "hours_7": "7 heures"}
-      }
-    },
-    "switch": {
-      "boost_mode": {"name": "Électrolyse · mode Boost"},
-      "cover_control_enabled": {"name": "Couverture · contrôle"},
-      "internal_orp_control_enabled": {"name": "Électrolyse · Cl mV auto"},
-      "external_chlorine_control_enabled": {"name": "Électrolyse · Cl EXT auto"},
-      "internal_flow_sensor_enabled": {"name": "Débit · Flow Cell"},
-      "external_flow_sensor_enabled": {"name": "Débit · Flow"},
-      "ph_intelligent_dosing_enabled": {"name": "pH · dosage intelligent"},
-      "ph_pump_stop_enabled": {"name": "pH · Pump Stop"},
-      "temperature_low_alarm_enabled": {"name": "Température · alarme basse activée"},
-      "temperature_high_alarm_enabled": {"name": "Température · alarme haute activée"},
-      "salt_low_alarm_enabled": {"name": "Salinité · alarme basse activée"},
-      "salt_high_alarm_enabled": {"name": "Salinité · alarme haute activée"},
-      "biopool_mode_control": {"name": "Système · mode Bio Pool"},
-      "eco_mode": {"name": "Système · mode ECO"}
-    },
+    "number": {"temperature_min_setpoint": {"name": "Température · seuil bas réglé"}, "temperature_max_setpoint": {"name": "Température · seuil haut réglé"}, "salt_min_setpoint": {"name": "Salinité · seuil bas réglé"}, "salt_max_setpoint": {"name": "Salinité · seuil haut réglé"}, "ph_setpoint": {"name": "pH · consigne"}, "ph_dosage_limit": {"name": "pH · Pump Stop · durée maximale"}, "orp_setpoint": {"name": "ORP · consigne"}, "electrolysis_normal_setpoint": {"name": "Électrolyse · production normale"}, "electrolysis_cover_setpoint": {"name": "Électrolyse · production couverture"}},
+    "select": {"ph_initialization_time": {"name": "pH · durée d’initialisation", "state": {"off": "Désactivé", "seconds_60": "60 secondes", "seconds_120": "120 secondes", "seconds_240": "240 secondes"}}, "polarity_reversal_period": {"name": "Électrolyse · période d’inversion de polarité", "state": {"hours_2": "2 heures", "hours_3": "3 heures", "hours_4": "4 heures", "hours_7": "7 heures"}}},
+    "switch": {"boost_mode": {"name": "Électrolyse · mode Boost"}, "cover_control_enabled": {"name": "Couverture · contrôle"}, "internal_orp_control_enabled": {"name": "Électrolyse · Cl mV auto"}, "external_chlorine_control_enabled": {"name": "Électrolyse · Cl EXT auto"}, "internal_flow_sensor_enabled": {"name": "Débit · Flow Cell"}, "external_flow_sensor_enabled": {"name": "Débit · Flow"}, "ph_intelligent_dosing_enabled": {"name": "pH · dosage intelligent"}, "ph_pump_stop_enabled": {"name": "pH · Pump Stop"}, "temperature_low_alarm_enabled": {"name": "Température · alarme basse activée"}, "temperature_high_alarm_enabled": {"name": "Température · alarme haute activée"}, "salt_low_alarm_enabled": {"name": "Salinité · alarme basse activée"}, "salt_high_alarm_enabled": {"name": "Salinité · alarme haute activée"}, "biopool_mode_control": {"name": "Système · mode Bio Pool"}, "eco_mode": {"name": "Système · mode ECO"}},
     "button": {"reset_ph_pump_stop": {"name": "pH · Pump Stop · réarmer"}},
-    "time": {
-      "system_time": {"name": "Horaires · heure appareil"},
-      "timer_start": {"name": "Horaires · démarrage"},
-      "timer_stop": {"name": "Horaires · arrêt"}
-    }
+    "time": {"system_time": {"name": "Horaires · heure appareil"}, "timer_start": {"name": "Horaires · démarrage"}, "timer_stop": {"name": "Horaires · arrêt"}}
   }
 }
