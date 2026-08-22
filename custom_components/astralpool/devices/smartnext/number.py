@@ -5,13 +5,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Awaitable, Callable
 
-from homeassistant.components.number import NumberEntity, NumberEntityDescription
+from homeassistant.components.number import (
+    NumberEntity,
+    NumberEntityDescription,
+    NumberMode,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .calibration_debug import HR_CALIBRATION_VALUE
 from .entity import SmartNextEntity
 
 Setter = Callable[[float], Awaitable[None]]
@@ -22,7 +27,8 @@ class SmartNextNumberDescription(NumberEntityDescription):
     """Describe a SmartNext number."""
 
     data_key: str
-    setter_name: str
+    setter_name: str | None = None
+    register_address: int | None = None
 
 
 NUMBERS: tuple[SmartNextNumberDescription, ...] = (
@@ -121,6 +127,19 @@ NUMBERS: tuple[SmartNextNumberDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         entity_category=EntityCategory.CONFIG,
     ),
+    SmartNextNumberDescription(
+        key="calibration_value_raw",
+        name="Calibration TEST · Valeur brute HR 0x22",
+        data_key="calibration_value_raw",
+        register_address=HR_CALIBRATION_VALUE,
+        native_min_value=0,
+        native_max_value=65535,
+        native_step=1,
+        mode=NumberMode.BOX,
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=True,
+        icon="mdi:numeric",
+    ),
 )
 
 
@@ -184,9 +203,16 @@ class SmartNextNumber(SmartNextEntity, NumberEntity):
                 f"active-mode range {self.native_min_value}..{self.native_max_value}"
             )
 
-        setter: Setter = getattr(
-            self.coordinator.api,
-            self.entity_description.setter_name,
-        )
-        await setter(value)
+        if self.entity_description.register_address is not None:
+            await self.coordinator.api.async_write_register(
+                self.entity_description.register_address,
+                round(value),
+            )
+        else:
+            assert self.entity_description.setter_name is not None
+            setter: Setter = getattr(
+                self.coordinator.api,
+                self.entity_description.setter_name,
+            )
+            await setter(value)
         await self.coordinator.async_request_refresh()
