@@ -35,7 +35,7 @@ class SmartNextCoordinator(DataUpdateCoordinator[dict]):
     async def _async_update_data(self) -> dict:
         try:
             data = await self.api.async_read_all()
-            data.update(await async_read_calibration_debug(self.api))
+            data.update(await async_read_calibration_debug(self.api, data))
             return data
         except SmartNextCommunicationError as err:
             raise UpdateFailed(str(err)) from err
