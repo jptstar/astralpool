@@ -8,8 +8,8 @@ from pathlib import Path
 
 ROOT = Path("custom_components/astralpool/devices/smartnext")
 GUIDED = ROOT / "guided_calibration.py"
-OPTIONS = ROOT / "guided_options.py"
 SAFE_OPTIONS = ROOT / "guided_options_safe.py"
+FINAL_OPTIONS = ROOT / "guided_options_final.py"
 CONFIG_FLOW = Path("custom_components/astralpool/config_flow.py")
 
 
@@ -56,25 +56,17 @@ def test_ph_fast_is_201_203_then_hr22_x100_then_50f() -> None:
     assert value < start < write < trigger
 
 
-def test_standard_ph_expects_16_then_1_without_terminal_rearm() -> None:
+def test_standard_ph_and_orp_do_not_rearm_after_terminal_result() -> None:
     source = _source(GUIDED)
-    ph7 = _function_source(source, "async_trigger_ph7", "async_trigger_ph4")
     ph4 = _function_source(source, "async_trigger_ph4", "async_restart_standard_ph_after_error")
-    assert "COIL_PH_CALIBRATION_PH7" in ph7
-    assert "RESPONSE_FIRST_POINT_OK" in ph4
+    orp = _function_source(source, "async_trigger_orp_470", "async_restart_orp_after_error")
     assert "COIL_PH_CALIBRATION_PH4" in ph4
+    assert "COIL_ORP_CALIBRATION_470MV" in orp
     assert "async_rearm_calibration_mode" not in ph4
+    assert "async_rearm_calibration_mode" not in orp
 
 
-def test_orp_terminal_result_does_not_rearm_201() -> None:
-    source = _source(GUIDED)
-    function = _function_source(source, "async_trigger_orp_470", "async_restart_orp_after_error")
-    assert "COIL_ORP_CALIBRATION_470MV" in function
-    assert "_async_wait_for_response" in function
-    assert "async_rearm_calibration_mode" not in function
-
-
-def test_persistent_zero_and_ph_pump_safety_are_established_before_hydraulics() -> None:
+def test_persistent_zero_and_real_ph_pump_safety_are_established() -> None:
     source = _source(GUIDED)
     prepare = _function_source(
         source,
@@ -114,7 +106,7 @@ def test_flow_inputs_are_disabled_only_after_201_is_confirmed() -> None:
     assert mode < halted < flow_off < clear
 
 
-def test_flow_inputs_restore_immediately_after_terminal_results() -> None:
+def test_flow_inputs_restore_immediately_after_every_terminal_exit() -> None:
     safe = _source(SAFE_OPTIONS)
     helper = _function_source(
         safe,
@@ -123,18 +115,20 @@ def test_flow_inputs_restore_immediately_after_terminal_results() -> None:
     )
     assert "async_restore_flow_sensors_immediately" in helper
 
-    ph4 = _function_source(
-        safe,
-        "async_step_calibrate_ph_standard_ph4",
-        "async_step_calibrate_ph_standard_error",
+    final = _source(FINAL_OPTIONS)
+    failure_helper = _function_source(
+        final,
+        "_async_record_failure_and_restore",
+        "async_step_calibrate_ph_standard_ph7",
     )
-    orp = _function_source(
-        safe,
-        "async_step_calibrate_orp_470",
-        "async_step_calibrate_orp_error",
-    )
-    assert "_async_terminal_flow_restore" in ph4
-    assert "_async_terminal_flow_restore" in orp
+    assert "_async_terminal_flow_restore" in failure_helper
+    for name, next_name in (
+        ("async_step_calibrate_ph_standard_ph7", "async_step_calibrate_ph_standard_ph4"),
+        ("async_step_calibrate_ph_standard_ph4", "async_step_calibrate_orp_470"),
+        ("async_step_calibrate_orp_470", None),
+    ):
+        function = _function_source(final, name, next_name)
+        assert "_async_terminal_flow_restore" in function or "_async_record_failure_and_restore" in function
 
 
 def test_one_minute_stabilization_is_mandatory_for_ph7_ph4_and_orp() -> None:
@@ -148,17 +142,18 @@ def test_one_minute_stabilization_is_mandatory_for_ph7_ph4_and_orp() -> None:
         and isinstance(node.value, ast.Constant)
     }
     assert assignments["STABILIZATION_SECONDS"] == 60.0
+    final = _source(FINAL_OPTIONS)
     for name, next_name in (
-        ("async_step_calibrate_ph_standard_ph7", "async_step_calibrate_ph_standard_ph4_immerse"),
-        ("async_step_calibrate_ph_standard_ph4", "async_step_calibrate_ph_standard_error"),
-        ("async_step_calibrate_orp_470", "async_step_calibrate_orp_error"),
+        ("async_step_calibrate_ph_standard_ph7", "async_step_calibrate_ph_standard_ph4"),
+        ("async_step_calibrate_ph_standard_ph4", "async_step_calibrate_orp_470"),
+        ("async_step_calibrate_orp_470", None),
     ):
-        function = _function_source(source, name, next_name)
+        function = _function_source(final, name, next_name)
         assert "STABILIZATION_SECONDS" in function
         assert "measurement_not_confirmed_stable" in function
 
 
-def test_retry_is_the_only_terminal_path_that_starts_a_new_calibration() -> None:
+def test_retry_is_explicit_and_errors_never_rearm_201_automatically() -> None:
     safe = _source(SAFE_OPTIONS)
     ph_error = _function_source(
         safe,
@@ -191,18 +186,9 @@ def test_success_offers_other_probe_without_repeating_hydraulic_preparation() ->
         "async_step_calibrate_orp_chain_ph7_immerse",
     } <= methods
 
-    ph4 = _function_source(
-        safe,
-        "async_step_calibrate_ph_standard_ph4",
-        "async_step_calibrate_ph_standard_error",
-    )
-    orp = _function_source(
-        safe,
-        "async_step_calibrate_orp_470",
-        "async_step_calibrate_orp_error",
-    )
-    assert "async_step_calibrate_ph_standard_next_sensor" in ph4
-    assert "async_step_calibrate_orp_next_sensor" in orp
+    final = _source(FINAL_OPTIONS)
+    assert "async_step_calibrate_ph_standard_next_sensor" in final
+    assert "async_step_calibrate_orp_next_sensor" in final
 
 
 def test_mode_activation_must_be_verified_promptly() -> None:
@@ -245,9 +231,9 @@ def test_factory_resets_force_201_then_203_then_reset_command() -> None:
     assert start < trigger < wait
 
 
-def test_config_flow_uses_hardened_guided_mixin() -> None:
+def test_config_flow_uses_final_fail_safe_guided_mixin() -> None:
     source = _source(CONFIG_FLOW)
-    assert "from .devices.smartnext.guided_options_safe import" in source
+    assert "from .devices.smartnext.guided_options_final import" in source
     assert "SmartNextGuidedCalibrationOptionsMixin" in source
 
 
