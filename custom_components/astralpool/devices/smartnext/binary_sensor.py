@@ -66,6 +66,14 @@ BINARY_SENSORS: tuple[SmartNextBinarySensorDescription, ...] = tuple(
         data_key="treatment_halted",
         device_class=BinarySensorDeviceClass.PROBLEM,
     ),
+    SmartNextBinarySensorDescription(
+        key="calibration_treatment_halted_raw",
+        name="Calibration TEST · Traitement arrêté (0x202)",
+        data_key="treatment_halted",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=True,
+        icon="mdi:water-off",
+    ),
     # Raw flow input states are intentionally not PROBLEM entities. 0x241/0x242
     # are the actual Smart Next alarm bits; 0x300/0x302 are raw status inputs
     # and can be active without the corresponding alarm being raised.
