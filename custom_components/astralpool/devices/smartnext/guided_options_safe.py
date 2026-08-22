@@ -1,4 +1,4 @@
-"""Safety refinements for the guided Smart Next pH/ORP calibration UI."""
+"""Final safety layer for guided Smart Next pH/ORP calibration."""
 
 from __future__ import annotations
 
@@ -13,6 +13,8 @@ from .guided_calibration import (
     RESPONSE_OK,
     GuidedCalibrationError,
     async_begin_bypassed_calibration,
+    async_confirm_filtration_stopped,
+    async_restore_flow_sensors_immediately,
     async_trigger_orp_470,
     async_trigger_ph4,
     async_trigger_ph7,
@@ -25,18 +27,12 @@ STABILIZATION_SECONDS: Final = 60.0
 
 
 class SmartNextGuidedCalibrationOptionsMixin(_BaseGuidedCalibrationOptionsMixin):
-    """Apply hardware feedback discovered during final pH/ORP validation.
-
-    Important safety rules:
-    - terminal success/error is allowed to leave 0x201 OFF;
-    - electrolysis stays independently locked at 0 % until hydraulics are restored;
-    - 0x201 is only started again for an explicit retry;
-    - pH 7, pH 4 and ORP 470 mV require at least 60 seconds of stabilization.
-    """
+    """Apply the hardware-validated pH/ORP workflow and physical safeguards."""
 
     _ph7_stabilization_started: float | None = None
     _ph4_stabilization_started: float | None = None
     _orp_stabilization_started: float | None = None
+    _calibration_chain_origin: str | None = None
 
     @staticmethod
     def _now() -> float:
@@ -51,8 +47,81 @@ class SmartNextGuidedCalibrationOptionsMixin(_BaseGuidedCalibrationOptionsMixin)
         )
         return max(0, int(remaining + 0.999))
 
+    async def _async_terminal_flow_restore(self, saved_state) -> str | None:
+        """Restore flow sensors immediately after success/error and verify pH pump."""
+        try:
+            await async_restore_flow_sensors_immediately(
+                self._config_entry.runtime_data.api, saved_state
+            )
+            await self._config_entry.runtime_data.async_request_refresh()
+        except (SmartNextCommunicationError, OSError, TimeoutError):
+            return "communication"
+        except GuidedCalibrationError as err:
+            return err.reason
+        return None
+
+    # ------------------------------------------------------------------
+    # Common physical safety: filtration OFF must really stop pH dosing.
+    # ------------------------------------------------------------------
+
+    async def async_step_calibrate_ph_standard_filtration_off(self, user_input=None):
+        if self._ph_saved_state is None:
+            return await self.async_step_calibrate_ph_standard_prepare()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get("filtration_off", False):
+                errors["base"] = "confirmation_required"
+            else:
+                try:
+                    await async_confirm_filtration_stopped(
+                        self._config_entry.runtime_data.api
+                    )
+                except (SmartNextCommunicationError, OSError, TimeoutError):
+                    errors["base"] = "calibration_communication_failed"
+                except GuidedCalibrationError as err:
+                    errors["base"] = err.reason
+                else:
+                    return await self.async_step_calibrate_ph_standard_bypass_open()
+        return self.async_show_form(
+            step_id="calibrate_ph_standard_filtration_off",
+            data_schema=vol.Schema(
+                {vol.Required("filtration_off", default=False): bool}
+            ),
+            errors=errors,
+        )
+
+    async def async_step_calibrate_orp_filtration_off(self, user_input=None):
+        if self._orp_saved_state is None:
+            return await self.async_step_calibrate_orp_prepare()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get("filtration_off", False):
+                errors["base"] = "confirmation_required"
+            else:
+                try:
+                    await async_confirm_filtration_stopped(
+                        self._config_entry.runtime_data.api
+                    )
+                except (SmartNextCommunicationError, OSError, TimeoutError):
+                    errors["base"] = "calibration_communication_failed"
+                except GuidedCalibrationError as err:
+                    errors["base"] = err.reason
+                else:
+                    return await self.async_step_calibrate_orp_bypass_open()
+        return self.async_show_form(
+            step_id="calibrate_orp_filtration_off",
+            data_schema=vol.Schema(
+                {vol.Required("filtration_off", default=False): bool}
+            ),
+            errors=errors,
+        )
+
+    # ------------------------------------------------------------------
+    # pH Standard: explicit immersion + mandatory 60 s + stable checkbox.
+    # ------------------------------------------------------------------
+
     async def async_step_calibrate_ph_standard_drain_pulse(self, user_input=None):
-        """Finish hydraulic preparation without entering 0x201 yet."""
+        """Finish hydraulic preparation; do not enter 0x201 yet."""
         if self._ph_saved_state is None:
             return await self.async_step_calibrate_ph_standard_prepare()
         errors: dict[str, str] = {}
@@ -62,33 +131,45 @@ class SmartNextGuidedCalibrationOptionsMixin(_BaseGuidedCalibrationOptionsMixin)
             else:
                 self._ph7_stabilization_started = None
                 self._ph4_stabilization_started = None
-                return await self.async_step_calibrate_ph_standard_ph7()
+                return await self.async_step_calibrate_ph_standard_ph7_immerse()
         return self.async_show_form(
             step_id="calibrate_ph_standard_drain_pulse",
             data_schema=vol.Schema({vol.Required("drain_done", default=False): bool}),
             errors=errors,
         )
 
-    async def async_step_calibrate_ph_standard_ph7(self, user_input=None):
-        """Require a full 60-second pH 7 stabilization before 201/203/50D."""
+    async def async_step_calibrate_ph_standard_ph7_immerse(self, user_input=None):
         if self._ph_saved_state is None:
             return await self.async_step_calibrate_ph_standard_prepare()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get("immersed", False):
+                errors["base"] = "confirmation_required"
+            else:
+                self._ph7_stabilization_started = self._now()
+                return await self.async_step_calibrate_ph_standard_ph7()
+        return self.async_show_form(
+            step_id="calibrate_ph_standard_ph7_immerse",
+            data_schema=vol.Schema({vol.Required("immersed", default=False): bool}),
+            errors=errors,
+        )
+
+    async def async_step_calibrate_ph_standard_ph7(self, user_input=None):
+        """Block pH 7 validation until at least 60 seconds have elapsed."""
+        if self._ph_saved_state is None:
+            return await self.async_step_calibrate_ph_standard_prepare()
+        if self._ph7_stabilization_started is None:
+            return await self.async_step_calibrate_ph_standard_ph7_immerse()
 
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not user_input.get("stable", False):
-                errors["base"] = "confirmation_required"
-            elif self._ph7_stabilization_started is None:
-                # First confirmation means the cleaned probe is now immersed.
-                # Keep 0x201 OFF during stabilization; the independent 0 % lock
-                # already protects the isolated electrolyzer.
-                self._ph7_stabilization_started = self._now()
+            elapsed = self._now() - self._ph7_stabilization_started
+            if elapsed < STABILIZATION_SECONDS:
                 errors["base"] = "stabilization_wait"
-            elif self._now() - self._ph7_stabilization_started < STABILIZATION_SECONDS:
-                errors["base"] = "stabilization_wait"
+            elif not user_input.get("stable", False):
+                errors["base"] = "measurement_not_confirmed_stable"
             else:
                 try:
-                    # Enter calibration only after the one-minute stabilization.
                     await async_begin_bypassed_calibration(
                         self._config_entry.runtime_data.api
                     )
@@ -105,9 +186,14 @@ class SmartNextGuidedCalibrationOptionsMixin(_BaseGuidedCalibrationOptionsMixin)
 
                 self._ph7_stabilization_started = None
                 if response == RESPONSE_FIRST_POINT_OK:
-                    self._ph4_stabilization_started = None
-                    return await self.async_step_calibrate_ph_standard_ph4()
-                self._ph_last_error = response
+                    return await self.async_step_calibrate_ph_standard_ph4_immerse()
+
+                # pH 7 errors are terminal on the real controller. Restore flow
+                # supervision immediately because 0x201 may already be OFF.
+                safety_error = await self._async_terminal_flow_restore(
+                    self._ph_saved_state
+                )
+                self._ph_last_error = safety_error or response
                 return await self.async_step_calibrate_ph_standard_error()
 
         current = self._config_entry.runtime_data.data.get("ph")
@@ -124,28 +210,41 @@ class SmartNextGuidedCalibrationOptionsMixin(_BaseGuidedCalibrationOptionsMixin)
             },
         )
 
-    async def async_step_calibrate_ph_standard_ph4(self, user_input=None):
-        """Require a full 60-second pH 4 stabilization before 0x50E."""
+    async def async_step_calibrate_ph_standard_ph4_immerse(self, user_input=None):
         if self._ph_saved_state is None:
             return await self.async_step_calibrate_ph_standard_prepare()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get("immersed", False):
+                errors["base"] = "confirmation_required"
+            else:
+                self._ph4_stabilization_started = self._now()
+                return await self.async_step_calibrate_ph_standard_ph4()
+        return self.async_show_form(
+            step_id="calibrate_ph_standard_ph4_immerse",
+            data_schema=vol.Schema({vol.Required("immersed", default=False): bool}),
+            errors=errors,
+        )
+
+    async def async_step_calibrate_ph_standard_ph4(self, user_input=None):
+        """Block pH 4 validation until at least 60 seconds have elapsed."""
+        if self._ph_saved_state is None:
+            return await self.async_step_calibrate_ph_standard_prepare()
+        if self._ph4_stabilization_started is None:
+            return await self.async_step_calibrate_ph_standard_ph4_immerse()
 
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not user_input.get("stable", False):
-                errors["base"] = "confirmation_required"
-            elif self._ph4_stabilization_started is None:
-                # 0x201 intentionally remains active after the accepted pH 7
-                # first point (IR22 = 16), preserving the two-point session.
-                self._ph4_stabilization_started = self._now()
+            elapsed = self._now() - self._ph4_stabilization_started
+            if elapsed < STABILIZATION_SECONDS:
                 errors["base"] = "stabilization_wait"
-            elif self._now() - self._ph4_stabilization_started < STABILIZATION_SECONDS:
-                errors["base"] = "stabilization_wait"
+            elif not user_input.get("stable", False):
+                errors["base"] = "measurement_not_confirmed_stable"
             else:
                 try:
                     response = await async_trigger_ph4(
                         self._config_entry.runtime_data.api
                     )
-                    await self._config_entry.runtime_data.async_request_refresh()
                 except (SmartNextCommunicationError, OSError, TimeoutError):
                     self._ph_last_error = "communication"
                     return await self.async_step_calibrate_ph_standard_error()
@@ -154,10 +253,18 @@ class SmartNextGuidedCalibrationOptionsMixin(_BaseGuidedCalibrationOptionsMixin)
                     return await self.async_step_calibrate_ph_standard_error()
 
                 self._ph4_stabilization_started = None
+                safety_error = await self._async_terminal_flow_restore(
+                    self._ph_saved_state
+                )
+                self._ph_last_error = safety_error
+                if safety_error is not None:
+                    return await self.async_step_calibrate_ph_standard_error()
                 if response == RESPONSE_OK:
-                    # Do not re-arm 0x201 here. The controller has completed the
-                    # calibration; persistent 0 % production protects restoration.
-                    return await self.async_step_calibrate_ph_standard_restore()
+                    if self._calibration_chain_origin == "orp":
+                        self._calibration_chain_origin = None
+                        return await self.async_step_calibrate_ph_standard_restore()
+                    return await self.async_step_calibrate_ph_standard_next_sensor()
+
                 self._ph_last_error = response
                 return await self.async_step_calibrate_ph_standard_error()
 
@@ -176,7 +283,7 @@ class SmartNextGuidedCalibrationOptionsMixin(_BaseGuidedCalibrationOptionsMixin)
         )
 
     async def async_step_calibrate_ph_standard_error(self, user_input=None):
-        """Leave terminal 0x201 state untouched; persistent 0 % remains active."""
+        """Never automatically re-enter 0x201 after a terminal pH result."""
         if self._ph_saved_state is None:
             return await self.async_step_calibrate_ph_standard_prepare()
         return self.async_show_menu(
@@ -189,18 +296,20 @@ class SmartNextGuidedCalibrationOptionsMixin(_BaseGuidedCalibrationOptionsMixin)
         )
 
     async def async_step_calibrate_ph_standard_retry(self, user_input=None):
-        """Restart only when the user explicitly chooses Retry."""
+        """Restart pH only after the user explicitly chooses Retry."""
         if self._ph_saved_state is None:
             return await self.async_step_calibrate_ph_standard_prepare()
         self._ph_last_error = None
         self._ph7_stabilization_started = None
         self._ph4_stabilization_started = None
-        # A fresh 0x201 -> 0x203 session will be started after the new pH 7
-        # solution has stabilized for a full minute.
-        return await self.async_step_calibrate_ph_standard_ph7()
+        return await self.async_step_calibrate_ph_standard_ph7_immerse()
+
+    # ------------------------------------------------------------------
+    # ORP: explicit immersion + mandatory 60 s + stable checkbox.
+    # ------------------------------------------------------------------
 
     async def async_step_calibrate_orp_drain_pulse(self, user_input=None):
-        """Finish ORP hydraulic preparation without entering 0x201 yet."""
+        """Finish ORP hydraulic preparation; do not enter 0x201 yet."""
         if self._orp_saved_state is None:
             return await self.async_step_calibrate_orp_prepare()
         errors: dict[str, str] = {}
@@ -209,38 +318,51 @@ class SmartNextGuidedCalibrationOptionsMixin(_BaseGuidedCalibrationOptionsMixin)
                 errors["base"] = "confirmation_required"
             else:
                 self._orp_stabilization_started = None
-                return await self.async_step_calibrate_orp_470()
+                return await self.async_step_calibrate_orp_immerse()
         return self.async_show_form(
             step_id="calibrate_orp_drain_pulse",
             data_schema=vol.Schema({vol.Required("drain_done", default=False): bool}),
             errors=errors,
         )
 
-    async def async_step_calibrate_orp_470(self, user_input=None):
-        """Require a full 60-second 470 mV stabilization before 201/203/80F."""
+    async def async_step_calibrate_orp_immerse(self, user_input=None):
         if self._orp_saved_state is None:
             return await self.async_step_calibrate_orp_prepare()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get("immersed", False):
+                errors["base"] = "confirmation_required"
+            else:
+                self._orp_stabilization_started = self._now()
+                return await self.async_step_calibrate_orp_470()
+        return self.async_show_form(
+            step_id="calibrate_orp_immerse",
+            data_schema=vol.Schema({vol.Required("immersed", default=False): bool}),
+            errors=errors,
+        )
+
+    async def async_step_calibrate_orp_470(self, user_input=None):
+        """Block 470 mV calibration until the probe has stabilized for 60 seconds."""
+        if self._orp_saved_state is None:
+            return await self.async_step_calibrate_orp_prepare()
+        if self._orp_stabilization_started is None:
+            return await self.async_step_calibrate_orp_immerse()
 
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not user_input.get("stable", False):
-                errors["base"] = "confirmation_required"
-            elif self._orp_stabilization_started is None:
-                self._orp_stabilization_started = self._now()
+            elapsed = self._now() - self._orp_stabilization_started
+            if elapsed < STABILIZATION_SECONDS:
                 errors["base"] = "stabilization_wait"
-            elif self._now() - self._orp_stabilization_started < STABILIZATION_SECONDS:
-                errors["base"] = "stabilization_wait"
+            elif not user_input.get("stable", False):
+                errors["base"] = "measurement_not_confirmed_stable"
             else:
                 try:
-                    # Keep 0x201 OFF while the ORP probe stabilizes. Once the
-                    # minute is complete, execute 201 -> 203 -> 80F immediately.
                     await async_begin_bypassed_calibration(
                         self._config_entry.runtime_data.api
                     )
                     response = await async_trigger_orp_470(
                         self._config_entry.runtime_data.api
                     )
-                    await self._config_entry.runtime_data.async_request_refresh()
                 except (SmartNextCommunicationError, OSError, TimeoutError):
                     self._orp_last_error = "communication"
                     return await self.async_step_calibrate_orp_error()
@@ -249,10 +371,18 @@ class SmartNextGuidedCalibrationOptionsMixin(_BaseGuidedCalibrationOptionsMixin)
                     return await self.async_step_calibrate_orp_error()
 
                 self._orp_stabilization_started = None
+                safety_error = await self._async_terminal_flow_restore(
+                    self._orp_saved_state
+                )
+                self._orp_last_error = safety_error
+                if safety_error is not None:
+                    return await self.async_step_calibrate_orp_error()
                 if response == RESPONSE_OK:
-                    # Critical: do not re-arm 0x201 after the accepted 470 mV
-                    # calibration. The 0 % lock stays active until restoration.
-                    return await self.async_step_calibrate_orp_restore()
+                    if self._calibration_chain_origin == "ph":
+                        self._calibration_chain_origin = None
+                        return await self.async_step_calibrate_orp_restore()
+                    return await self.async_step_calibrate_orp_next_sensor()
+
                 self._orp_last_error = response
                 return await self.async_step_calibrate_orp_error()
 
@@ -269,7 +399,7 @@ class SmartNextGuidedCalibrationOptionsMixin(_BaseGuidedCalibrationOptionsMixin)
         )
 
     async def async_step_calibrate_orp_error(self, user_input=None):
-        """Do not re-arm 0x201 after a terminal ORP error."""
+        """Never automatically re-enter 0x201 after a terminal ORP result."""
         if self._orp_saved_state is None:
             return await self.async_step_calibrate_orp_prepare()
         return self.async_show_menu(
@@ -282,9 +412,123 @@ class SmartNextGuidedCalibrationOptionsMixin(_BaseGuidedCalibrationOptionsMixin)
         )
 
     async def async_step_calibrate_orp_retry(self, user_input=None):
-        """Restart ORP only after an explicit user retry."""
         if self._orp_saved_state is None:
             return await self.async_step_calibrate_orp_prepare()
         self._orp_last_error = None
         self._orp_stabilization_started = None
-        return await self.async_step_calibrate_orp_470()
+        return await self.async_step_calibrate_orp_immerse()
+
+    # ------------------------------------------------------------------
+    # Chaining: calibrate the other probe without reopening the hydraulics.
+    # ------------------------------------------------------------------
+
+    async def async_step_calibrate_ph_standard_next_sensor(self, user_input=None):
+        """After pH success, offer ORP while the cell is still isolated."""
+        if self._ph_saved_state is None:
+            return await self.async_step_calibrate_ph_standard_prepare()
+        if not self._orp_available():
+            return await self.async_step_calibrate_ph_standard_restore()
+        return self.async_show_menu(
+            step_id="calibrate_ph_standard_next_sensor",
+            menu_options={
+                "calibrate_ph_standard_chain_orp": "Oui · calibrer aussi le Redox / ORP",
+                "calibrate_ph_standard_restore": "Non · terminer et rétablir l’installation",
+            },
+        )
+
+    async def async_step_calibrate_ph_standard_chain_orp(self, user_input=None):
+        """Reinstall the calibrated pH probe before removing the ORP probe."""
+        if self._ph_saved_state is None:
+            return await self.async_step_calibrate_ph_standard_prepare()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get("ph_reinstalled", False):
+                errors["base"] = "confirmation_required"
+            else:
+                self._orp_saved_state = self._ph_saved_state
+                self._ph_saved_state = None
+                self._calibration_chain_origin = "ph"
+                self._orp_stabilization_started = None
+                return await self.async_step_calibrate_ph_standard_chain_orp_immerse()
+        return self.async_show_form(
+            step_id="calibrate_ph_standard_chain_orp",
+            data_schema=vol.Schema(
+                {vol.Required("ph_reinstalled", default=False): bool}
+            ),
+            errors=errors,
+        )
+
+    async def async_step_calibrate_ph_standard_chain_orp_immerse(
+        self, user_input=None
+    ):
+        if self._orp_saved_state is None:
+            return await self.async_step_calibrate_orp_prepare()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get("orp_immersed", False):
+                errors["base"] = "confirmation_required"
+            else:
+                self._orp_stabilization_started = self._now()
+                return await self.async_step_calibrate_orp_470()
+        return self.async_show_form(
+            step_id="calibrate_ph_standard_chain_orp_immerse",
+            data_schema=vol.Schema(
+                {vol.Required("orp_immersed", default=False): bool}
+            ),
+            errors=errors,
+        )
+
+    async def async_step_calibrate_orp_next_sensor(self, user_input=None):
+        """After ORP success, offer pH while the cell is still isolated."""
+        if self._orp_saved_state is None:
+            return await self.async_step_calibrate_orp_prepare()
+        if not self._ph_available():
+            return await self.async_step_calibrate_orp_restore()
+        return self.async_show_menu(
+            step_id="calibrate_orp_next_sensor",
+            menu_options={
+                "calibrate_orp_chain_ph": "Oui · calibrer aussi le pH",
+                "calibrate_orp_restore": "Non · terminer et rétablir l’installation",
+            },
+        )
+
+    async def async_step_calibrate_orp_chain_ph(self, user_input=None):
+        """Reinstall the calibrated ORP probe before removing the pH probe."""
+        if self._orp_saved_state is None:
+            return await self.async_step_calibrate_orp_prepare()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get("orp_reinstalled", False):
+                errors["base"] = "confirmation_required"
+            else:
+                self._ph_saved_state = self._orp_saved_state
+                self._orp_saved_state = None
+                self._calibration_chain_origin = "orp"
+                self._ph7_stabilization_started = None
+                self._ph4_stabilization_started = None
+                return await self.async_step_calibrate_orp_chain_ph7_immerse()
+        return self.async_show_form(
+            step_id="calibrate_orp_chain_ph",
+            data_schema=vol.Schema(
+                {vol.Required("orp_reinstalled", default=False): bool}
+            ),
+            errors=errors,
+        )
+
+    async def async_step_calibrate_orp_chain_ph7_immerse(self, user_input=None):
+        if self._ph_saved_state is None:
+            return await self.async_step_calibrate_ph_standard_prepare()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get("ph_immersed", False):
+                errors["base"] = "confirmation_required"
+            else:
+                self._ph7_stabilization_started = self._now()
+                return await self.async_step_calibrate_ph_standard_ph7()
+        return self.async_show_form(
+            step_id="calibrate_orp_chain_ph7_immerse",
+            data_schema=vol.Schema(
+                {vol.Required("ph_immersed", default=False): bool}
+            ),
+            errors=errors,
+        )
