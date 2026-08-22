@@ -63,7 +63,7 @@ Available procedures include:
 
 Calibration resets use the documented calibration workflow: clear the previous calibration response, enter calibration mode, send the reset command, wait for `rsp_calibrado` and then leave calibration mode. Temperature and salinity calibration resets use the dedicated calibration reset bits rather than their configuration reset bits.
 
-The restart procedure is intentionally guided rather than exposed as an entity. It verifies that `Watchdog_config` is the documented restart mode, arms the minimum 60-second watchdog, temporarily unloads AstralPool so no Modbus polling keeps the watchdog alive, waits for the controller to restart, restores the previous watchdog timeout and reloads the integration. Expect the procedure to take roughly 60–90 seconds.
+The restart procedure is intentionally guided rather than exposed as an entity. It first verifies that `Watchdog_config` is the documented restart mode, then fully unloads AstralPool so normal polling is stopped. A dedicated Modbus client arms the minimum 60-second watchdog and closes immediately, establishing a known last communication point. After a 70-second communication-silence period, the integration reconnects, restores the previous watchdog timeout and reloads normal polling. Expect the full procedure to take roughly 70–100 seconds.
 
 The operational **pH · Pump Stop · rearm** action remains available as a normal Home Assistant button.
 
