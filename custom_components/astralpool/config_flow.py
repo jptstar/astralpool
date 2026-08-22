@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -33,6 +35,27 @@ from .const import (
 )
 from .devices.elyo_touch.api import ElyoTouchApi, ElyoTouchCommunicationError
 from .devices.smartnext.api import SmartNextApi, SmartNextCommunicationError
+from .devices.smartnext.maintenance import (
+    ACTION_CAPABILITIES,
+    ACTION_RESTART_DEVICE,
+    ACTION_RESET_FLOW_CONFIG,
+    ACTION_RESET_ORP_CALIBRATION,
+    ACTION_RESET_ORP_CONFIG,
+    ACTION_RESET_PH_CALIBRATION,
+    ACTION_RESET_PH_CONFIG,
+    ACTION_RESET_SALT_CALIBRATION,
+    ACTION_RESET_SALT_CONFIG,
+    ACTION_RESET_TEMPERATURE_CALIBRATION,
+    ACTION_RESET_TEMPERATURE_CONFIG,
+    CALIBRATION_RESET_COILS,
+    CONFIG_RESET_COILS,
+    WATCHDOG_RESTART_SECONDS,
+    SmartNextMaintenanceError,
+    async_arm_restart_watchdog,
+    async_restore_watchdog,
+    async_run_calibration_reset,
+    async_run_config_reset,
+)
 
 _UNIT_ID_SELECTOR = vol.All(
     NumberSelector(
@@ -45,6 +68,52 @@ _UNIT_ID_SELECTOR = vol.All(
     ),
     vol.Coerce(int),
 )
+
+_MAINTENANCE_ACTION_LABELS = {
+    ACTION_RESET_FLOW_CONFIG: "Flow · reset configuration",
+    ACTION_RESET_PH_CONFIG: "pH · reset configuration",
+    ACTION_RESET_PH_CALIBRATION: "pH · reset calibration",
+    ACTION_RESET_ORP_CONFIG: "ORP · reset configuration",
+    ACTION_RESET_ORP_CALIBRATION: "ORP · reset calibration",
+    ACTION_RESET_TEMPERATURE_CONFIG: "Temperature · reset alarm configuration",
+    ACTION_RESET_TEMPERATURE_CALIBRATION: "Temperature · reset calibration",
+    ACTION_RESET_SALT_CONFIG: "Salinity · reset alarm configuration",
+    ACTION_RESET_SALT_CALIBRATION: "Salinity · reset calibration",
+    ACTION_RESTART_DEVICE: "System · restart Smart Next",
+}
+
+_MAINTENANCE_ACTION_DETAILS = {
+    ACTION_RESET_FLOW_CONFIG: "Restores the documented Flow / Flow Cell configuration defaults.",
+    ACTION_RESET_PH_CONFIG: "Restores the documented pH configuration defaults.",
+    ACTION_RESET_PH_CALIBRATION: "Enters calibration mode and restores the factory pH calibration.",
+    ACTION_RESET_ORP_CONFIG: "Restores the documented ORP configuration defaults.",
+    ACTION_RESET_ORP_CALIBRATION: "Enters calibration mode and restores the factory ORP calibration.",
+    ACTION_RESET_TEMPERATURE_CONFIG: "Restores the temperature alarm thresholds and alarm-enable defaults.",
+    ACTION_RESET_TEMPERATURE_CALIBRATION: "Enters calibration mode and resets the temperature calibration.",
+    ACTION_RESET_SALT_CONFIG: "Restores the conductivity alarm thresholds and alarm-enable defaults.",
+    ACTION_RESET_SALT_CALIBRATION: "Enters calibration mode and resets the salinity calibration.",
+    ACTION_RESTART_DEVICE: (
+        "Arms the documented 60-second communication watchdog, temporarily stops "
+        "AstralPool polling, waits for the Smart Next to restart, restores the previous "
+        "watchdog timeout and reloads the integration. This takes about 60–90 seconds."
+    ),
+}
+
+_MAINTENANCE_RESULT_MESSAGES = {
+    "ok": "The Smart Next confirmed the maintenance operation.",
+    "restart_ok": "The Smart Next restart procedure completed and the previous watchdog setting was restored.",
+    "e2": "The Smart Next returned calibration error E2: the detected value is too far from the expected value.",
+    "e3": "The Smart Next returned calibration error E3: the measurement is unstable.",
+    "unavailable": "The requested calibration is not available on this Smart Next configuration.",
+    "initializing": "The Smart Next is still initializing and rejected the calibration operation.",
+    "first_point_ok": "The Smart Next returned the first-point calibration status instead of a reset confirmation.",
+    "timeout": "No calibration result was received before the timeout.",
+    "response_not_cleared": "The previous calibration result could not be cleared.",
+    "watchdog_not_restart": "The controller watchdog is not configured for restart; no restart was attempted.",
+    "restart_unload_failed": "Home Assistant could not stop AstralPool polling; no restart was attempted.",
+    "restart_restore_failed": "The Smart Next restarted, but the previous watchdog timeout could not be restored automatically.",
+    "unsupported_action": "This maintenance operation is not supported.",
+}
 
 
 def _connection_schema(device_type: str, defaults: dict | None = None) -> vol.Schema:
@@ -222,13 +291,25 @@ class AstralPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class AstralPoolOptionsFlow(config_entries.OptionsFlow):
-    """Handle runtime-tunable AstralPool options."""
+    """Handle AstralPool communication and Smart Next maintenance options."""
 
     def __init__(self, config_entry) -> None:
         self._config_entry = config_entry
+        self._maintenance_action: str | None = None
+        self._maintenance_result: str | None = None
 
     async def async_step_init(self, user_input=None) -> ConfigFlowResult:
-        """Manage communication options."""
+        """Open the options menu."""
+        if self._config_entry.data[CONF_DEVICE_TYPE] != DEVICE_TYPE_SMARTNEXT:
+            return await self.async_step_communication(user_input)
+
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=["communication", "maintenance"],
+        )
+
+    async def async_step_communication(self, user_input=None) -> ConfigFlowResult:
+        """Manage runtime-tunable Modbus communication options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
@@ -250,7 +331,7 @@ class AstralPoolOptionsFlow(config_entries.OptionsFlow):
         }
 
         return self.async_show_form(
-            step_id="init",
+            step_id="communication",
             data_schema=vol.Schema(
                 {
                     vol.Required(
@@ -272,4 +353,148 @@ class AstralPoolOptionsFlow(config_entries.OptionsFlow):
                     ),
                 }
             ),
+        )
+
+    def _available_maintenance_actions(self) -> dict[str, str]:
+        """Return only procedures supported by the detected Smart Next hardware."""
+        data = self._config_entry.runtime_data.data
+        actions: dict[str, str] = {}
+        for action, label in _MAINTENANCE_ACTION_LABELS.items():
+            capability = ACTION_CAPABILITIES.get(action)
+            if capability is not None and not data.get(capability, False):
+                continue
+            actions[action] = label
+        return actions
+
+    async def async_step_maintenance(self, user_input=None) -> ConfigFlowResult:
+        """Choose one guided Smart Next maintenance procedure."""
+        actions = self._available_maintenance_actions()
+        if user_input is not None:
+            self._maintenance_action = user_input["maintenance_action"]
+            return await self.async_step_maintenance_confirm()
+
+        return self.async_show_form(
+            step_id="maintenance",
+            data_schema=vol.Schema(
+                {vol.Required("maintenance_action"): vol.In(actions)}
+            ),
+        )
+
+    async def async_step_maintenance_confirm(self, user_input=None) -> ConfigFlowResult:
+        """Require explicit confirmation before a maintenance write."""
+        if self._maintenance_action is None:
+            return await self.async_step_maintenance()
+
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get("confirm", False):
+                errors["base"] = "confirmation_required"
+            else:
+                self._maintenance_result = await self._async_execute_maintenance()
+                return await self.async_step_maintenance_result()
+
+        return self.async_show_form(
+            step_id="maintenance_confirm",
+            data_schema=vol.Schema({vol.Required("confirm", default=False): bool}),
+            errors=errors,
+            description_placeholders={
+                "action": _MAINTENANCE_ACTION_LABELS[self._maintenance_action],
+                "details": _MAINTENANCE_ACTION_DETAILS[self._maintenance_action],
+            },
+        )
+
+    async def _async_execute_maintenance(self) -> str:
+        """Execute the selected maintenance procedure and return display text."""
+        assert self._maintenance_action is not None
+        try:
+            if self._maintenance_action in CONFIG_RESET_COILS:
+                result = await async_run_config_reset(
+                    self._config_entry.runtime_data.api,
+                    self._maintenance_action,
+                )
+                await self._config_entry.runtime_data.async_request_refresh()
+            elif self._maintenance_action in CALIBRATION_RESET_COILS:
+                result = await async_run_calibration_reset(
+                    self._config_entry.runtime_data.api,
+                    self._maintenance_action,
+                )
+                await self._config_entry.runtime_data.async_request_refresh()
+            elif self._maintenance_action == ACTION_RESTART_DEVICE:
+                result = await self._async_restart_smartnext()
+            else:
+                raise SmartNextMaintenanceError("unsupported_action")
+        except SmartNextMaintenanceError as err:
+            return _MAINTENANCE_RESULT_MESSAGES.get(err.reason, err.reason)
+        except (SmartNextCommunicationError, OSError, TimeoutError) as err:
+            return f"Modbus communication failed: {err}"
+
+        return _MAINTENANCE_RESULT_MESSAGES.get(result, result)
+
+    def _new_smartnext_api(self) -> SmartNextApi:
+        """Build a standalone client using the active entry settings."""
+        entry = self._config_entry
+        return SmartNextApi(
+            host=entry.data[CONF_HOST],
+            port=entry.data[CONF_PORT],
+            timeout=float(entry.options.get(CONF_TIMEOUT, entry.data[CONF_TIMEOUT])),
+            reconnect_delay=float(
+                entry.options.get(
+                    CONF_RECONNECT_DELAY,
+                    entry.data[CONF_RECONNECT_DELAY],
+                )
+            ),
+            unit_id=int(entry.options.get(CONF_UNIT_ID, entry.data[CONF_UNIT_ID])),
+        )
+
+    async def _async_restart_smartnext(self) -> str:
+        """Perform a one-shot restart through the documented Modbus watchdog."""
+        entry = self._config_entry
+        api = entry.runtime_data.api
+        previous_timeout = await async_arm_restart_watchdog(api)
+
+        if not await self.hass.config_entries.async_unload(entry.entry_id):
+            await async_restore_watchdog(api, previous_timeout)
+            raise SmartNextMaintenanceError("restart_unload_failed")
+
+        # The protocol documents a minimum watchdog timeout of 60 seconds. With
+        # the entry unloaded there is no AstralPool Modbus traffic to feed it.
+        await asyncio.sleep(WATCHDOG_RESTART_SECONDS + 5)
+
+        restored = False
+        restore_api = self._new_smartnext_api()
+        try:
+            for _ in range(12):
+                try:
+                    await restore_api.async_connect()
+                    await async_restore_watchdog(restore_api, previous_timeout)
+                    restored = True
+                    break
+                except (SmartNextCommunicationError, OSError, TimeoutError):
+                    await restore_api.async_close()
+                    await asyncio.sleep(5)
+        finally:
+            await restore_api.async_close()
+
+        # Reload even on restoration failure so normal polling can resume as soon
+        # as the device is reachable and keep feeding an armed watchdog.
+        await self.hass.config_entries.async_reload(entry.entry_id)
+
+        if not restored:
+            raise SmartNextMaintenanceError("restart_restore_failed")
+        return "restart_ok"
+
+    async def async_step_maintenance_result(self, user_input=None) -> ConfigFlowResult:
+        """Show the result returned by the guided procedure."""
+        if user_input is not None:
+            return self.async_create_entry(
+                title="",
+                data=dict(self._config_entry.options),
+            )
+
+        return self.async_show_form(
+            step_id="maintenance_result",
+            data_schema=vol.Schema({}),
+            description_placeholders={
+                "result": self._maintenance_result or "Maintenance completed."
+            },
         )
