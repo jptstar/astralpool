@@ -4,7 +4,7 @@ Local Modbus integration for supported AstralPool pool equipment.
 
 This repository combines Smart Next and Pro Elyo Touch support under a single Home Assistant domain: `astralpool`.
 
-**Stable baseline:** version 1.0.7.
+**Stable baseline:** version 1.0.8.
 
 > **Unofficial project** — This is an independent community integration. It is not developed, approved, endorsed, or maintained by AstralPool or Fluidra. AstralPool, Fluidra and their product names and trademarks remain the property of their respective owners.
 
@@ -46,7 +46,7 @@ For Smart Next software 2.00, the conductivity alarm thresholds use the verified
 
 Open **Settings → Devices & services → AstralPool → Configure → Smart Next maintenance**.
 
-Version 1.0.7 separates maintenance into three guided families:
+Maintenance is separated into three guided families:
 
 - **Restart Smart Next**
 - **Calibrate a sensor**
@@ -62,7 +62,7 @@ To apply a new reference temperature, Home Assistant:
 
 1. writes the requested temperature multiplied by 10 to holding register `0x22`;
 2. triggers temperature calibration coil `0xB0F`;
-3. waits **15 seconds** for the Smart Next to apply the new calibration;
+3. waits **5 seconds** for the Smart Next to apply the new calibration;
 4. refreshes the device data.
 
 Example: entering `29.0 °C` writes `290` to holding register `0x22` before triggering `0xB0F`.
@@ -70,28 +70,30 @@ Example: entering `29.0 °C` writes `290` to holding register `0x22` before trig
 To restore the factory temperature calibration, Home Assistant:
 
 1. triggers reset coil `0xB0D`;
-2. waits **15 seconds** for the controller to restore the factory calibration;
+2. waits **2 seconds**;
 3. refreshes the device data.
 
 These temperature procedures intentionally do not enter the generic `Calibration_Mode` or manipulate flow/electrolysis settings because that is not part of the physically validated temperature sequence.
 
 ### Raw calibration test entities
 
-The integration temporarily exposes the documented calibration primitives as normal Home Assistant entities so the exact controller sequences can be validated on real hardware. Their names start with **Calibration TEST** and include the Modbus address.
+Version 1.0.8 expands the raw calibration diagnostics so the exact Smart Next state machine can be reconstructed on real hardware before pH, ORP and salinity are automated.
 
-Available raw test entities are:
+The device exposes:
 
 - switch: calibration mode `0x201`
+- switch + button: clear calibration response `0x203`
 - binary sensor: treatment halted `0x202`
-- button: clear calibration response `0x203`
 - number: raw calibration value holding register `0x22`
 - sensor: raw calibration response input register `0x22`
-- pH buttons: reset `0x50C`, pH 7 point `0x50D`, pH 4 point `0x50E`, fast calibration `0x50F`
-- ORP buttons: reset `0x80C`, 470 mV calibration `0x80F`
-- temperature buttons: reset `0xB0D`, calibration `0xB0F`
-- salinity buttons: reset `0xC0D`, calibration `0xC0F`
+- pH switches + buttons: reset `0x50C`, pH 7 point `0x50D`, pH 4 point `0x50E`, fast calibration `0x50F`
+- ORP switches + buttons: reset `0x80C`, 470 mV calibration `0x80F`
+- temperature switches + buttons: reset `0xB0D`, calibration `0xB0F`
+- salinity switches + buttons: reset `0xC0D`, calibration `0xC0F`
 
-The raw command buttons intentionally write only `1` to their documented volatile coil. They do **not** add an automatic release, calibration mode transition, delay or response handling. This is deliberate: the entities are intended to identify the real sequence used by the Smart Next before that sequence is encoded as a guided maintenance procedure.
+All raw test names start with **Calibration TEST** and include the Modbus address. The switches are true read/write entities: their state is refreshed from the actual Smart Next coil and they can explicitly force `OFF` then `ON`. This makes it possible to identify commands that remain latched instead of auto-clearing.
+
+The raw command buttons remain available and intentionally write only `1` to their documented volatile coil. They do **not** add an automatic release, calibration mode transition, delay or response handling.
 
 The raw response sensor reports the numeric `rsp_calibrado` code and adds its documented meaning as an entity attribute: `0` no response, `1` OK, `2` E2, `3` E3, `4` unavailable, `5` device initializing and `16` first calibration point OK.
 
