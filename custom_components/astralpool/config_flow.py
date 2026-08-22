@@ -9,15 +9,12 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.config_entries import SOURCE_RECONFIGURE, ConfigFlowResult
-from homeassistant.const import CONF_HOST, CONF_PORT, CONF_TIMEOUT
+from homeassistant.const import CONF_HOST, CONF_PORT, CONF_TIMEOUT, UnitOfTemperature
 from homeassistant.core import callback
 from homeassistant.helpers.selector import (
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
-    SelectSelector,
-    SelectSelectorConfig,
-    SelectSelectorMode,
 )
 
 from .const import (
@@ -40,26 +37,16 @@ from .const import (
 from .devices.elyo_touch.api import ElyoTouchApi, ElyoTouchCommunicationError
 from .devices.smartnext.api import SmartNextApi, SmartNextCommunicationError
 from .devices.smartnext.maintenance import (
-    ACTION_CAPABILITIES,
     ACTION_RESTART_DEVICE,
-    ACTION_RESET_FLOW_CONFIG,
-    ACTION_RESET_ORP_CALIBRATION,
-    ACTION_RESET_ORP_CONFIG,
-    ACTION_RESET_PH_CALIBRATION,
-    ACTION_RESET_PH_CONFIG,
-    ACTION_RESET_SALT_CALIBRATION,
-    ACTION_RESET_SALT_CONFIG,
-    ACTION_RESET_TEMPERATURE_CALIBRATION,
-    ACTION_RESET_TEMPERATURE_CONFIG,
-    CALIBRATION_RESET_COILS,
-    CONFIG_RESET_COILS,
     WATCHDOG_RESTART_SECONDS,
     SmartNextMaintenanceError,
     async_arm_restart_watchdog,
     async_read_watchdog,
     async_restore_watchdog,
-    async_run_calibration_reset,
-    async_run_config_reset,
+)
+from .devices.smartnext.temperature_calibration import (
+    async_calibrate_temperature,
+    async_reset_temperature_calibration,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -76,31 +63,18 @@ _UNIT_ID_SELECTOR = vol.All(
     vol.Coerce(int),
 )
 
-_MAINTENANCE_ACTIONS = (
-    ACTION_RESET_FLOW_CONFIG,
-    ACTION_RESET_PH_CONFIG,
-    ACTION_RESET_PH_CALIBRATION,
-    ACTION_RESET_ORP_CONFIG,
-    ACTION_RESET_ORP_CALIBRATION,
-    ACTION_RESET_TEMPERATURE_CONFIG,
-    ACTION_RESET_TEMPERATURE_CALIBRATION,
-    ACTION_RESET_SALT_CONFIG,
-    ACTION_RESET_SALT_CALIBRATION,
-    ACTION_RESTART_DEVICE,
+_TEMPERATURE_SELECTOR = NumberSelector(
+    NumberSelectorConfig(
+        min=0,
+        max=60,
+        step=0.1,
+        unit_of_measurement=UnitOfTemperature.CELSIUS,
+        mode=NumberSelectorMode.BOX,
+    )
 )
 
-_MAINTENANCE_ABORT_REASONS = {
-    "ok": "maintenance_ok",
-    "e2": "maintenance_e2",
-    "e3": "maintenance_e3",
-    "unavailable": "maintenance_unavailable",
-    "initializing": "maintenance_initializing",
-    "first_point_ok": "maintenance_first_point_ok",
-    "timeout": "maintenance_timeout",
-    "response_not_cleared": "maintenance_response_not_cleared",
-    "unsupported_action": "maintenance_unsupported",
-    "communication_failed": "maintenance_communication_failed",
-}
+ACTION_CALIBRATE_TEMPERATURE = "calibrate_temperature"
+ACTION_RESTORE_TEMPERATURE_CALIBRATION = "restore_temperature_calibration"
 
 
 def _connection_schema(device_type: str, defaults: dict | None = None) -> vol.Schema:
@@ -341,41 +315,97 @@ class AstralPoolOptionsFlow(config_entries.OptionsFlow):
             ),
         )
 
-    def _available_maintenance_actions(self) -> list[str]:
-        """Return only procedures supported by the detected Smart Next hardware."""
-        data = self._config_entry.runtime_data.data
-        actions: list[str] = []
-        for action in _MAINTENANCE_ACTIONS:
-            capability = ACTION_CAPABILITIES.get(action)
-            if capability is not None and not data.get(capability, False):
-                continue
-            actions.append(action)
-        return actions
+    def _temperature_available(self) -> bool:
+        """Return whether the Smart Next has temperature measurement hardware."""
+        return bool(
+            self._config_entry.runtime_data.data.get(
+                "technology_temperature_implemented", False
+            )
+        )
 
     async def async_step_maintenance(self, user_input=None) -> ConfigFlowResult:
-        """Choose one guided Smart Next maintenance procedure."""
-        actions = self._available_maintenance_actions()
-        if user_input is not None:
-            self._maintenance_action = user_input["maintenance_action"]
-            return await self.async_step_maintenance_confirm()
-
-        return self.async_show_form(
+        """Show the three Smart Next maintenance families."""
+        return self.async_show_menu(
             step_id="maintenance",
+            menu_options={
+                "restart_device": "Redémarrer le Smart Next",
+                "calibrate_sensor": "Calibrer un capteur",
+                "restore_calibration": "Restaurer la calibration d’usine",
+            },
+        )
+
+    async def async_step_restart_device(self, user_input=None) -> ConfigFlowResult:
+        """Open restart confirmation."""
+        self._maintenance_action = ACTION_RESTART_DEVICE
+        return await self.async_step_maintenance_confirm(user_input)
+
+    async def async_step_calibrate_sensor(self, user_input=None) -> ConfigFlowResult:
+        """Choose a sensor to calibrate."""
+        if not self._temperature_available():
+            return self.async_abort(reason="maintenance_unsupported")
+
+        return self.async_show_menu(
+            step_id="calibrate_sensor",
+            menu_options={
+                "calibrate_temperature": "Température",
+            },
+        )
+
+    async def async_step_restore_calibration(self, user_input=None) -> ConfigFlowResult:
+        """Choose a sensor whose calibration should return to factory defaults."""
+        if not self._temperature_available():
+            return self.async_abort(reason="maintenance_unsupported")
+
+        return self.async_show_menu(
+            step_id="restore_calibration",
+            menu_options={
+                "restore_temperature_calibration": "Température",
+            },
+        )
+
+    async def async_step_calibrate_temperature(self, user_input=None) -> ConfigFlowResult:
+        """Calibrate temperature using the validated 0x22 -> 0xB0F sequence."""
+        if not self._temperature_available():
+            return self.async_abort(reason="maintenance_unsupported")
+
+        if user_input is not None:
+            reference_temperature = float(user_input["temperature"])
+            try:
+                await async_calibrate_temperature(
+                    self._config_entry.runtime_data.api,
+                    reference_temperature,
+                )
+                await self._config_entry.runtime_data.async_request_refresh()
+            except (SmartNextCommunicationError, OSError, TimeoutError):
+                return self.async_abort(reason="maintenance_communication_failed")
+            return self.async_abort(reason="maintenance_ok")
+
+        current = self._config_entry.runtime_data.data.get("temperature")
+        default_temperature = (
+            float(current)
+            if isinstance(current, (int, float)) and 0 <= float(current) <= 60
+            else 25.0
+        )
+        return self.async_show_form(
+            step_id="calibrate_temperature",
             data_schema=vol.Schema(
                 {
-                    vol.Required("maintenance_action"): SelectSelector(
-                        SelectSelectorConfig(
-                            options=actions,
-                            translation_key="maintenance_action",
-                            mode=SelectSelectorMode.DROPDOWN,
-                        )
-                    )
+                    vol.Required(
+                        "temperature", default=default_temperature
+                    ): _TEMPERATURE_SELECTOR
                 }
             ),
         )
 
+    async def async_step_restore_temperature_calibration(
+        self, user_input=None
+    ) -> ConfigFlowResult:
+        """Confirm restoration of the factory temperature calibration."""
+        self._maintenance_action = ACTION_RESTORE_TEMPERATURE_CALIBRATION
+        return await self.async_step_maintenance_confirm(user_input)
+
     async def async_step_maintenance_confirm(self, user_input=None) -> ConfigFlowResult:
-        """Require explicit confirmation before a maintenance write."""
+        """Require explicit confirmation before restart or factory reset."""
         if self._maintenance_action is None:
             return await self.async_step_maintenance()
 
@@ -384,52 +414,28 @@ class AstralPoolOptionsFlow(config_entries.OptionsFlow):
             if not user_input.get("confirm", False):
                 errors["base"] = "confirmation_required"
             elif self._maintenance_action == ACTION_RESTART_DEVICE:
-                # The restart must not unload its own config entry while this options
-                # flow is still serving the frontend request. Start a HA-owned
-                # background task whose first action is to yield long enough for this
-                # flow to close cleanly, then perform the watchdog sequence.
                 self.hass.async_create_background_task(
                     self._async_restart_smartnext_background(),
                     f"{DOMAIN}: Smart Next restart",
                 )
                 return self.async_abort(reason="restart_started")
-            else:
-                result = await self._async_execute_maintenance()
-                return self.async_abort(
-                    reason=_MAINTENANCE_ABORT_REASONS.get(
-                        result, "maintenance_failed"
+            elif self._maintenance_action == ACTION_RESTORE_TEMPERATURE_CALIBRATION:
+                try:
+                    await async_reset_temperature_calibration(
+                        self._config_entry.runtime_data.api
                     )
-                )
+                    await self._config_entry.runtime_data.async_request_refresh()
+                except (SmartNextCommunicationError, OSError, TimeoutError):
+                    return self.async_abort(reason="maintenance_communication_failed")
+                return self.async_abort(reason="maintenance_ok")
+            else:
+                return self.async_abort(reason="maintenance_unsupported")
 
         return self.async_show_form(
             step_id="maintenance_confirm",
             data_schema=vol.Schema({vol.Required("confirm", default=False): bool}),
             errors=errors,
         )
-
-    async def _async_execute_maintenance(self) -> str:
-        """Execute a non-restart maintenance procedure and return a result code."""
-        assert self._maintenance_action is not None
-        try:
-            if self._maintenance_action in CONFIG_RESET_COILS:
-                result = await async_run_config_reset(
-                    self._config_entry.runtime_data.api,
-                    self._maintenance_action,
-                )
-                await self._config_entry.runtime_data.async_request_refresh()
-                return result
-            if self._maintenance_action in CALIBRATION_RESET_COILS:
-                result = await async_run_calibration_reset(
-                    self._config_entry.runtime_data.api,
-                    self._maintenance_action,
-                )
-                await self._config_entry.runtime_data.async_request_refresh()
-                return result
-            return "unsupported_action"
-        except SmartNextMaintenanceError as err:
-            return err.reason
-        except (SmartNextCommunicationError, OSError, TimeoutError):
-            return "communication_failed"
 
     def _new_smartnext_api(self) -> SmartNextApi:
         """Build a standalone client using the active entry settings."""
@@ -449,8 +455,6 @@ class AstralPoolOptionsFlow(config_entries.OptionsFlow):
 
     async def _async_restart_smartnext_background(self) -> None:
         """Run the restart after the options flow has closed."""
-        # async_create_background_task may eager-start the coroutine. Yield before
-        # touching the config entry so the abort response reaches the frontend first.
         await asyncio.sleep(1)
         try:
             await self._async_restart_smartnext()
@@ -465,14 +469,10 @@ class AstralPoolOptionsFlow(config_entries.OptionsFlow):
         """Perform a one-shot restart through the documented Modbus watchdog."""
         entry = self._config_entry
 
-        # Refuse the procedure before disrupting the integration unless the
-        # controller explicitly reports the documented watchdog restart action.
         _, watchdog_config = await async_read_watchdog(entry.runtime_data.api)
         if watchdog_config != 1:
             raise SmartNextMaintenanceError("watchdog_not_restart")
 
-        # Stop the coordinator and every AstralPool platform first. This guarantees
-        # that no normal poll can reset the watchdog timer after it is armed.
         if not await self.hass.config_entries.async_unload(entry.entry_id):
             raise SmartNextMaintenanceError("restart_unload_failed")
 
@@ -486,13 +486,8 @@ class AstralPoolOptionsFlow(config_entries.OptionsFlow):
                 await self.hass.config_entries.async_reload(entry.entry_id)
                 raise SmartNextMaintenanceError("restart_arm_failed") from None
         finally:
-            # Closing immediately after the 0x10 write establishes a known last
-            # Modbus communication point for the 60-second watchdog countdown.
             await arm_api.async_close()
 
-        # Give the watchdog its full documented 60 seconds plus a safety margin
-        # before any reconnect attempt, otherwise a premature Modbus request could
-        # feed the watchdog and prevent the intended restart.
         await asyncio.sleep(WATCHDOG_RESTART_SECONDS + 10)
 
         restored = False
@@ -510,8 +505,6 @@ class AstralPoolOptionsFlow(config_entries.OptionsFlow):
         finally:
             await restore_api.async_close()
 
-        # Reload even on restoration failure so normal polling can resume as soon
-        # as the device is reachable and keep feeding an armed watchdog.
         await self.hass.config_entries.async_reload(entry.entry_id)
 
         if not restored:
