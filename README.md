@@ -4,7 +4,7 @@ Local Modbus integration for supported AstralPool pool equipment.
 
 This repository combines Smart Next and Pro Elyo Touch support under a single Home Assistant domain: `astralpool`.
 
-**Stable baseline:** version 1.0.2.
+**Stable baseline:** version 1.0.3.
 
 > **Unofficial project** — This is an independent community integration. It is not developed, approved, endorsed, or maintained by AstralPool or Fluidra. AstralPool, Fluidra and their product names and trademarks remain the property of their respective owners.
 
@@ -42,7 +42,7 @@ The integration also exposes the measured pH, ORP, temperature, salinity/conduct
 
 For Smart Next software 2.00, the conductivity alarm thresholds use the verified `0xC1` / `0xC2` mapping. Older v1.70 controllers use the historical `0xC2` / `0xC3` mapping. The integration detects the active layout from the controller registers before reading or writing these limits.
 
-Calibration and maintenance/factory-reset commands are intentionally not exposed yet. They will only be added after the complete calibration workflow and result handling are verified.
+Documented Smart Next maintenance resets are exposed as Home Assistant buttons and are disabled by default to prevent accidental activation. Available commands include Flow configuration reset, pH configuration and calibration resets, ORP configuration and calibration resets, temperature configuration reset, and salinity configuration reset. No undocumented global factory reset or watchdog reboot command is exposed.
 
 ## Installation
 
