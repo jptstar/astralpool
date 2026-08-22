@@ -36,6 +36,8 @@ class FakeApi:
         self.register_writes: list[tuple[int, int]] = []
         self.coils: dict[int, bool] = {}
         self.input_responses: list[int] = [0]
+        self.discrete_responses: list[bool] = [True, False]
+        self.discrete_reads: list[int] = []
         self.holding = [0, 1]
 
     async def async_write_coil(self, address: int, value: bool) -> None:
@@ -54,6 +56,14 @@ class FakeApi:
         if len(self.input_responses) > 1:
             return [self.input_responses.pop(0)]
         return [self.input_responses[0]]
+
+    async def _read_discrete_inputs(self, address: int, count: int) -> list[bool]:
+        assert address == 0x202
+        assert count == 1
+        self.discrete_reads.append(address)
+        if len(self.discrete_responses) > 1:
+            return [self.discrete_responses.pop(0)]
+        return [self.discrete_responses[0]]
 
     async def _read_holding_registers(self, address: int, count: int) -> list[int]:
         assert (address, count) == (0x10, 2)
@@ -75,10 +85,11 @@ def test_configuration_reset_is_a_documented_one_shot_command() -> None:
     assert api.coil_writes == [(0x30C, True)]
 
 
-def test_ph_calibration_reset_uses_full_calibration_workflow() -> None:
+def test_ph_calibration_reset_waits_for_treatment_halted() -> None:
     maintenance = _load_maintenance_module()
     api = FakeApi()
     api.input_responses = [0, 1]
+    api.discrete_responses = [False, True, False]
 
     result = asyncio.run(
         maintenance.async_run_calibration_reset(
@@ -91,9 +102,10 @@ def test_ph_calibration_reset_uses_full_calibration_workflow() -> None:
         (0x203, True),
         (0x201, True),
         (0x50C, True),
-        (0x50C, False),
         (0x201, False),
     ]
+    assert len(api.discrete_reads) >= 3
+    assert all(address == 0x202 for address in api.discrete_reads)
 
 
 def test_temperature_and_salt_use_calibration_reset_bits_not_config_bits() -> None:
@@ -106,10 +118,29 @@ def test_temperature_and_salt_use_calibration_reset_bits_not_config_bits() -> No
     ] == 0xC0D
 
 
+def test_temperature_reset_uses_same_confirmed_calibration_workflow() -> None:
+    maintenance = _load_maintenance_module()
+    api = FakeApi()
+    api.input_responses = [0, 1]
+    api.discrete_responses = [True, False]
+
+    result = asyncio.run(
+        maintenance.async_run_calibration_reset(
+            api, maintenance.ACTION_RESET_TEMPERATURE_CALIBRATION
+        )
+    )
+
+    assert result == "ok"
+    assert (0xB0D, True) in api.coil_writes
+    assert api.coil_writes.index((0x201, True)) < api.coil_writes.index((0xB0D, True))
+    assert api.coil_writes[-1] == (0x201, False)
+
+
 def test_calibration_error_still_leaves_calibration_mode() -> None:
     maintenance = _load_maintenance_module()
     api = FakeApi()
     api.input_responses = [0, 2]
+    api.discrete_responses = [True, False]
 
     with pytest.raises(maintenance.SmartNextMaintenanceError, match="e2"):
         asyncio.run(
@@ -118,7 +149,7 @@ def test_calibration_error_still_leaves_calibration_mode() -> None:
             )
         )
 
-    assert api.coil_writes[-2:] == [(0x80C, False), (0x201, False)]
+    assert api.coil_writes[-1] == (0x201, False)
 
 
 def test_watchdog_restart_is_only_armed_when_action_is_restart() -> None:
