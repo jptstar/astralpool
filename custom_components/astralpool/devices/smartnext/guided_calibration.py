@@ -25,14 +25,16 @@ from .const import (
     COIL_ELECTROLYSIS_INTERNAL_ORP_CONTROL_ENABLE,
     COIL_FLOW_EXTERNAL_SENSOR_ENABLE,
     COIL_FLOW_INTERNAL_SENSOR_ENABLE,
+    COIL_PH_PUMP_STOP_ENABLE,
     DI_ELECTROLYSIS_RUNNING,
     DI_FLOW_GENERAL,
-    DI_TREATMENT_HALTED,
     HR_ELECTROLYSIS_CONTROL_WORD,
     HR_ELECTROLYSIS_NORMAL_SETPOINT,
     HR_FLOW_CONTROL_WORD,
+    HR_PH_OUTPUT_CONTROL_WORD,
     IR_ELECTROLYSIS_CURRENT,
     IR_ELECTROLYSIS_PRODUCTION,
+    IR_PH_PUMP_OUTPUT,
 )
 
 CALIBRATION_RESPONSE_TIMEOUT_SECONDS: Final = 10.0
@@ -42,6 +44,7 @@ CALIBRATION_COMMAND_EDGE_SECONDS: Final = 0.05
 CALIBRATION_MODE_MAX_REARM_SECONDS: Final = 10.0
 OUTPUT_STOP_TIMEOUT_SECONDS: Final = 8.0
 OUTPUT_STOP_POLL_SECONDS: Final = 0.25
+PH_PUMP_STOP_TIMEOUT_SECONDS: Final = 3.0
 
 RESPONSE_NONE: Final = 0
 RESPONSE_OK: Final = 1
@@ -63,7 +66,7 @@ class GuidedCalibrationError(RuntimeError):
 
 @dataclass(slots=True)
 class CalibrationSavedState:
-    """Controller settings temporarily changed while the cell may be bypassed."""
+    """Controller settings temporarily changed while probes may be removed."""
 
     internal_flow_enabled: bool
     external_flow_enabled: bool
@@ -72,6 +75,7 @@ class CalibrationSavedState:
     cover_control_enabled: bool
     external_control_enabled: bool
     internal_orp_control_enabled: bool
+    ph_pump_stop_enabled: bool
 
 
 async def async_read_calibration_response(api: Any) -> int:
@@ -98,10 +102,9 @@ async def _async_wait_for_mode(api: Any, expected: bool) -> bool:
 async def async_rearm_calibration_mode(api: Any) -> None:
     """Activate 0x201 and verify the command promptly.
 
-    This helper is used only when a calibration session is intentionally
-    started or restarted. A terminal calibration response is deliberately not
-    followed by an automatic re-arm: persistent 0 % electrolysis is the safety
-    barrier while the probe and hydraulics are restored.
+    This helper is used only to intentionally start/restart a calibration. A
+    terminal result is never followed by an automatic re-arm because doing so
+    was observed to leave a freshly calibrated ORP channel reading 999 mV.
     """
     started = asyncio.get_running_loop().time()
     if not await async_read_calibration_mode(api):
@@ -140,7 +143,8 @@ async def async_start_calibration_session(api: Any, *, force_clear: bool = False
     """Enter 0x201, verify treatment halt, then ensure IR 0x22 is clear."""
     await async_rearm_calibration_mode(api)
 
-    halted = bool((await api._read_discrete_inputs(DI_TREATMENT_HALTED, 1))[0])
+    # DI 0x202 is the controller confirmation that treatment/dosing is halted.
+    halted = bool((await api._read_discrete_inputs(0x202, 1))[0])
     if not halted:
         raise GuidedCalibrationError("treatment_not_halted")
 
@@ -173,7 +177,7 @@ async def _async_wait_for_response(api: Any, previous_response: int) -> int:
 
 
 async def async_verify_electrolysis_stopped(api: Any) -> None:
-    """Verify the independent 0 % safety after 0x201 has terminated."""
+    """Verify the independent persistent electrolysis safety barrier."""
     deadline = asyncio.get_running_loop().time() + OUTPUT_STOP_TIMEOUT_SECONDS
     while asyncio.get_running_loop().time() < deadline:
         production = int(
@@ -191,12 +195,46 @@ async def async_verify_electrolysis_stopped(api: Any) -> None:
     raise GuidedCalibrationError("electrolysis_safety_lost")
 
 
+async def async_verify_ph_pump_stopped(api: Any) -> None:
+    """Verify the real pH pump output is 0 %, not just the Pump Stop setting."""
+    deadline = asyncio.get_running_loop().time() + PH_PUMP_STOP_TIMEOUT_SECONDS
+    while asyncio.get_running_loop().time() < deadline:
+        output = int((await api._read_input_registers(IR_PH_PUMP_OUTPUT, 1))[0])
+        if output == 0:
+            return
+        await asyncio.sleep(CALIBRATION_POLL_SECONDS)
+    raise GuidedCalibrationError("ph_pump_not_stopped")
+
+
+async def _async_set_flow_sensors(api: Any, internal: bool, external: bool) -> None:
+    """Set both logical flow supervision inputs explicitly."""
+    await api.async_write_coil(COIL_FLOW_INTERNAL_SENSOR_ENABLE, internal)
+    await api.async_write_coil(COIL_FLOW_EXTERNAL_SENSOR_ENABLE, external)
+
+
+async def async_restore_flow_sensors_immediately(
+    api: Any, saved: CalibrationSavedState
+) -> None:
+    """Restore flow supervision as soon as a terminal calibration result arrives.
+
+    Filtration is still OFF at this point. Restoring the normal flow supervision
+    therefore provides an independent no-flow inhibition for pH dosing while
+    the probes and valves are physically restored. Electrolysis remains at 0 %.
+    """
+    await _async_set_flow_sensors(
+        api, saved.internal_flow_enabled, saved.external_flow_enabled
+    )
+    await async_verify_electrolysis_stopped(api)
+    await async_verify_ph_pump_stopped(api)
+
+
 async def async_prepare_bypassed_calibration(api: Any) -> CalibrationSavedState:
-    """Establish persistent 0 % production before any hydraulic manipulation."""
+    """Establish persistent safety before any hydraulic manipulation."""
     flow_control = (await api._read_holding_registers(HR_FLOW_CONTROL_WORD, 1))[0]
     electrolysis_control = (
         await api._read_holding_registers(HR_ELECTROLYSIS_CONTROL_WORD, 2)
     )
+    ph_control = (await api._read_holding_registers(HR_PH_OUTPUT_CONTROL_WORD, 1))[0]
     control_word = electrolysis_control[0]
     saved = CalibrationSavedState(
         internal_flow_enabled=bool(flow_control & (1 << 0)),
@@ -206,12 +244,18 @@ async def async_prepare_bypassed_calibration(api: Any) -> CalibrationSavedState:
         cover_control_enabled=bool(control_word & (1 << 2)),
         external_control_enabled=bool(control_word & (1 << 4)),
         internal_orp_control_enabled=bool(control_word & (1 << 5)),
+        ph_pump_stop_enabled=bool(ph_control & (1 << 12)),
     )
 
     try:
-        # Keep normal hydraulics until software safety has been established.
-        await api.async_write_coil(COIL_FLOW_INTERNAL_SENSOR_ENABLE, False)
-        await api.async_write_coil(COIL_FLOW_EXTERNAL_SENSOR_ENABLE, False)
+        # Pump Stop is kept enabled as an additional controller safety. It is
+        # not treated as the immediate pump-off command: IR 0x58 is verified.
+        await api.async_write_coil(COIL_PH_PUMP_STOP_ENABLE, True)
+
+        # Keep flow supervision active during physical preparation. Once the
+        # filtration pump is stopped, no-flow protection prevents pH dosing.
+        await _async_set_flow_sensors(api, True, True)
+
         if saved.boost_enabled:
             await api.async_write_coil(COIL_ELECTROLYSIS_BOOST, False)
         if saved.cover_control_enabled:
@@ -238,10 +282,31 @@ async def async_prepare_bypassed_calibration(api: Any) -> CalibrationSavedState:
         raise
 
 
-async def async_begin_bypassed_calibration(api: Any) -> None:
-    """Start the validated 0x201 -> 0x203 sequence after probe immersion."""
+async def async_confirm_filtration_stopped(api: Any) -> None:
+    """Block hydraulic isolation unless electrolysis and pH dosing are stopped."""
     await async_verify_electrolysis_stopped(api)
-    await async_start_calibration_session(api, force_clear=True)
+    await async_verify_ph_pump_stopped(api)
+
+
+async def async_begin_bypassed_calibration(api: Any) -> None:
+    """Enter 0x201 safely, then disable flow inputs and clear IR 0x22.
+
+    Flow supervision remains active until 0x201 has actually stopped treatment
+    and dosing. This avoids a window where a removed pH probe can command the
+    dosing pump before calibration mode is active.
+    """
+    await async_verify_electrolysis_stopped(api)
+    await async_verify_ph_pump_stopped(api)
+    await async_rearm_calibration_mode(api)
+
+    halted = bool((await api._read_discrete_inputs(0x202, 1))[0])
+    if not halted:
+        raise GuidedCalibrationError("treatment_not_halted")
+
+    # The hardware tests were performed with flow inputs disabled during the
+    # actual sensor calibration. Disable them only after 0x201 is confirmed.
+    await _async_set_flow_sensors(api, False, False)
+    await async_clear_response_in_active_mode(api, force=True)
 
 
 async def async_restore_bypassed_calibration(
@@ -250,20 +315,13 @@ async def async_restore_bypassed_calibration(
     *,
     verify_flow: bool = True,
 ) -> None:
-    """Restore flow supervision and finally restore electrolysis production.
-
-    Do not re-enter 0x201 here. Real-hardware observation showed an ORP reading
-    of 999 mV after a successful 470 mV calibration when 0x201 had been
-    automatically re-armed during probe restoration. The independent 0 %
-    production lock remains active until this function finishes.
-    """
+    """Finish restoration and only then restore electrolysis/pH settings."""
     await async_verify_electrolysis_stopped(api)
 
-    await api.async_write_coil(
-        COIL_FLOW_INTERNAL_SENSOR_ENABLE, saved.internal_flow_enabled
-    )
-    await api.async_write_coil(
-        COIL_FLOW_EXTERNAL_SENSOR_ENABLE, saved.external_flow_enabled
+    # Normally these were already restored immediately after the calibration
+    # result. Re-apply the saved values to make final restoration idempotent.
+    await _async_set_flow_sensors(
+        api, saved.internal_flow_enabled, saved.external_flow_enabled
     )
 
     if verify_flow and (saved.internal_flow_enabled or saved.external_flow_enabled):
@@ -272,8 +330,6 @@ async def async_restore_bypassed_calibration(
         if flow_alarm:
             raise GuidedCalibrationError("flow_not_restored")
 
-    # The controller normally leaves 0x201 itself after success/error. Ensure it
-    # is OFF before restoring any production source, but never re-arm it here.
     if await async_read_calibration_mode(api):
         await api.async_write_coil(COIL_CALIBRATION_MODE, False)
         if not await _async_wait_for_mode(api, False):
@@ -292,6 +348,12 @@ async def async_restore_bypassed_calibration(
         await api.async_write_coil(COIL_ELECTROLYSIS_COVER_CONTROL_ENABLE, True)
     if saved.boost_enabled:
         await api.async_write_coil(COIL_ELECTROLYSIS_BOOST, True)
+
+    # Restore the user's original Pump Stop configuration last, after probes,
+    # valves and normal circulation have all been confirmed.
+    await api.async_write_coil(
+        COIL_PH_PUMP_STOP_ENABLE, saved.ph_pump_stop_enabled
+    )
 
 
 async def async_calibrate_ph_fast(api: Any, reference_ph: float) -> int:
@@ -317,10 +379,7 @@ async def async_trigger_ph7(api: Any) -> int:
     if await async_read_calibration_response(api) != RESPONSE_NONE:
         await async_clear_response_in_active_mode(api)
     await _async_command_edge(api, COIL_PH_CALIBRATION_PH7)
-    response = await _async_wait_for_response(api, RESPONSE_NONE)
-    if response != RESPONSE_FIRST_POINT_OK:
-        await async_verify_electrolysis_stopped(api)
-    return response
+    return await _async_wait_for_response(api, RESPONSE_NONE)
 
 
 async def async_trigger_ph4(api: Any) -> int:
@@ -330,15 +389,12 @@ async def async_trigger_ph4(api: Any) -> int:
     if await async_read_calibration_response(api) != RESPONSE_FIRST_POINT_OK:
         raise GuidedCalibrationError("ph_first_point_missing")
     await _async_command_edge(api, COIL_PH_CALIBRATION_PH4)
-    response = await _async_wait_for_response(api, RESPONSE_FIRST_POINT_OK)
-    await async_verify_electrolysis_stopped(api)
-    return response
+    return await _async_wait_for_response(api, RESPONSE_FIRST_POINT_OK)
 
 
 async def async_restart_standard_ph_after_error(api: Any) -> None:
-    """Explicitly start a new standard pH session after an error."""
-    await async_verify_electrolysis_stopped(api)
-    await async_start_calibration_session(api, force_clear=True)
+    """Explicitly start a fresh pH calibration session after an error."""
+    await async_begin_bypassed_calibration(api)
 
 
 async def async_trigger_orp_470(api: Any) -> int:
@@ -348,15 +404,12 @@ async def async_trigger_orp_470(api: Any) -> int:
     if await async_read_calibration_response(api) != RESPONSE_NONE:
         await async_clear_response_in_active_mode(api)
     await _async_command_edge(api, COIL_ORP_CALIBRATION_470MV)
-    response = await _async_wait_for_response(api, RESPONSE_NONE)
-    await async_verify_electrolysis_stopped(api)
-    return response
+    return await _async_wait_for_response(api, RESPONSE_NONE)
 
 
 async def async_restart_orp_after_error(api: Any) -> None:
     """Explicitly start a fresh 470 mV ORP session after an error."""
-    await async_verify_electrolysis_stopped(api)
-    await async_start_calibration_session(api, force_clear=True)
+    await async_begin_bypassed_calibration(api)
 
 
 async def _async_reset_calibration(api: Any, coil: int) -> int:
