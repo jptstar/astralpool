@@ -23,6 +23,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .calibration_debug import CALIBRATION_RESPONSE_MEANINGS
 from .entity import SmartNextEntity
 
 
@@ -34,6 +35,14 @@ class SmartNextSensorDescription(SensorEntityDescription):
 
 
 SENSORS: tuple[SmartNextSensorDescription, ...] = (
+    SmartNextSensorDescription(
+        key="calibration_response_raw",
+        name="Calibration TEST · Réponse brute IR 0x22",
+        data_key="calibration_response_raw",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=True,
+        icon="mdi:message-reply-text-outline",
+    ),
     SmartNextSensorDescription(
         key="electrolysis_rated_capacity",
         translation_key="electrolysis_rated_capacity",
@@ -246,3 +255,17 @@ class SmartNextSensor(SmartNextEntity, SensorEntity):
     @property
     def native_value(self) -> Any:
         return self.coordinator.data.get(self.entity_description.data_key)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Expose the documented meaning of the raw calibration response."""
+        if self.entity_description.key != "calibration_response_raw":
+            return None
+        value = self.coordinator.data.get("calibration_response_raw")
+        if value is None:
+            return None
+        return {
+            "signification": CALIBRATION_RESPONSE_MEANINGS.get(
+                int(value), f"Réponse inconnue {value}"
+            )
+        }
