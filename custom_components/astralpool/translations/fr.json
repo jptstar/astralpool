@@ -27,6 +27,20 @@
     "abort": {"already_configured": "Cette connexion AstralPool est déjà configurée."}
   },
   "options": {
+    "abort": {
+      "restart_started": "Le redémarrage du Smart Next a été lancé en arrière-plan. AstralPool sera temporairement indisponible pendant environ 70 à 100 secondes, puis se reconnectera automatiquement.",
+      "maintenance_ok": "Le Smart Next a confirmé l’opération de maintenance.",
+      "maintenance_e2": "Le Smart Next a renvoyé l’erreur de calibration E2 : la valeur détectée est trop éloignée de la valeur attendue.",
+      "maintenance_e3": "Le Smart Next a renvoyé l’erreur de calibration E3 : la mesure est instable.",
+      "maintenance_unavailable": "La calibration demandée n’est pas disponible sur cette configuration Smart Next.",
+      "maintenance_initializing": "Le Smart Next est encore en cours d’initialisation et a refusé l’opération de calibration.",
+      "maintenance_first_point_ok": "Le Smart Next a renvoyé l’état du premier point de calibration au lieu d’une confirmation de réinitialisation.",
+      "maintenance_timeout": "Aucun résultat de calibration n’a été reçu avant l’expiration du délai.",
+      "maintenance_response_not_cleared": "L’ancien résultat de calibration n’a pas pu être effacé.",
+      "maintenance_unsupported": "Cette procédure de maintenance n’est pas prise en charge.",
+      "maintenance_communication_failed": "La communication avec le Smart Next a échoué pendant la procédure de maintenance.",
+      "maintenance_failed": "La procédure de maintenance Smart Next a échoué."
+    },
     "error": {
       "confirmation_required": "Confirmez l’opération de maintenance avant de continuer."
     },
@@ -54,12 +68,24 @@
       },
       "maintenance_confirm": {
         "title": "Confirmer la procédure de maintenance",
-        "description": "**{action}**\n\n{details}\n\nL’opération écrit directement dans le Smart Next en Modbus local. Confirmez uniquement si vous souhaitez l’exécuter maintenant.",
+        "description": "L’opération sélectionnée écrit directement dans le Smart Next en Modbus local. Les procédures de calibration arrêtent temporairement le traitement de l’eau tant que le mode calibration est actif. Confirmez uniquement si vous souhaitez exécuter maintenant la procédure sélectionnée.",
         "data": {"confirm": "Je comprends et je souhaite exécuter cette procédure"}
-      },
-      "maintenance_result": {
-        "title": "Résultat de la maintenance",
-        "description": "{result}"
+      }
+    }
+  },
+  "selector": {
+    "maintenance_action": {
+      "options": {
+        "reset_flow_config": "Débit / Flow Cell · réinitialiser la configuration",
+        "reset_ph_config": "pH · réinitialiser la configuration",
+        "reset_ph_calibration": "pH · réinitialiser la calibration",
+        "reset_orp_config": "ORP · réinitialiser la configuration",
+        "reset_orp_calibration": "ORP · réinitialiser la calibration",
+        "reset_temperature_config": "Température · réinitialiser la configuration des alarmes",
+        "reset_temperature_calibration": "Température · réinitialiser la calibration",
+        "reset_salt_config": "Salinité · réinitialiser la configuration des alarmes",
+        "reset_salt_calibration": "Salinité · réinitialiser la calibration",
+        "restart_device": "Système · redémarrer le Smart Next"
       }
     }
   },

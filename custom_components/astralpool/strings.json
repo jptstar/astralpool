@@ -27,6 +27,20 @@
     "abort": {"already_configured": "This AstralPool connection is already configured."}
   },
   "options": {
+    "abort": {
+      "restart_started": "The Smart Next restart has started in the background. AstralPool will become temporarily unavailable for about 70–100 seconds and will reconnect automatically.",
+      "maintenance_ok": "The Smart Next confirmed the maintenance operation.",
+      "maintenance_e2": "The Smart Next returned calibration error E2: the detected value is too far from the expected value.",
+      "maintenance_e3": "The Smart Next returned calibration error E3: the measurement is unstable.",
+      "maintenance_unavailable": "The requested calibration is not available on this Smart Next configuration.",
+      "maintenance_initializing": "The Smart Next is still initializing and rejected the calibration operation.",
+      "maintenance_first_point_ok": "The Smart Next returned the first-point calibration status instead of a reset confirmation.",
+      "maintenance_timeout": "No calibration result was received before the timeout.",
+      "maintenance_response_not_cleared": "The previous calibration result could not be cleared.",
+      "maintenance_unsupported": "This maintenance procedure is not supported.",
+      "maintenance_communication_failed": "Communication with the Smart Next failed during the maintenance procedure.",
+      "maintenance_failed": "The Smart Next maintenance procedure failed."
+    },
     "error": {
       "confirmation_required": "Confirm the maintenance operation before continuing."
     },
@@ -54,12 +68,24 @@
       },
       "maintenance_confirm": {
         "title": "Confirm maintenance procedure",
-        "description": "**{action}**\n\n{details}\n\nThe operation writes directly to the Smart Next over local Modbus. Confirm only if you want to execute it now.",
+        "description": "The selected operation writes directly to the Smart Next over local Modbus. Calibration procedures temporarily stop water treatment while calibration mode is active. Confirm only if you want to execute the selected procedure now.",
         "data": {"confirm": "I understand and want to execute this procedure"}
-      },
-      "maintenance_result": {
-        "title": "Maintenance result",
-        "description": "{result}"
+      }
+    }
+  },
+  "selector": {
+    "maintenance_action": {
+      "options": {
+        "reset_flow_config": "Flow / Flow Cell · reset configuration",
+        "reset_ph_config": "pH · reset configuration",
+        "reset_ph_calibration": "pH · reset calibration",
+        "reset_orp_config": "ORP · reset configuration",
+        "reset_orp_calibration": "ORP · reset calibration",
+        "reset_temperature_config": "Temperature · reset alarm configuration",
+        "reset_temperature_calibration": "Temperature · reset calibration",
+        "reset_salt_config": "Salinity · reset alarm configuration",
+        "reset_salt_calibration": "Salinity · reset calibration",
+        "restart_device": "System · restart Smart Next"
       }
     }
   },

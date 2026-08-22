@@ -4,7 +4,7 @@ Local Modbus integration for supported AstralPool pool equipment.
 
 This repository combines Smart Next and Pro Elyo Touch support under a single Home Assistant domain: `astralpool`.
 
-**Stable baseline:** version 1.0.4.
+**Stable baseline:** version 1.0.5.
 
 > **Unofficial project** — This is an independent community integration. It is not developed, approved, endorsed, or maintained by AstralPool or Fluidra. AstralPool, Fluidra and their product names and trademarks remain the property of their respective owners.
 
@@ -46,7 +46,7 @@ For Smart Next software 2.00, the conductivity alarm thresholds use the verified
 
 Destructive Smart Next resets are not exposed as normal Home Assistant buttons. They are available through a guided maintenance flow under **Settings → Devices & services → AstralPool → Configure → Smart Next maintenance**.
 
-The maintenance flow only shows procedures supported by the technologies detected on the connected controller, requires an explicit confirmation, executes the complete documented Modbus sequence and displays the result returned by the Smart Next when one is available.
+The maintenance flow only shows procedures supported by the technologies detected on the connected controller, requires an explicit confirmation, executes the complete documented Modbus sequence and displays the result returned by the Smart Next when one is available. Procedure names and result messages use the Home Assistant translation system, including French translations.
 
 Available procedures include:
 
@@ -61,9 +61,9 @@ Available procedures include:
 - reset conductivity/salinity calibration
 - restart the Smart Next through the documented Modbus communication watchdog
 
-Calibration resets use the documented calibration workflow: clear the previous calibration response, enter calibration mode, send the reset command, wait for `rsp_calibrado` and then leave calibration mode. Temperature and salinity calibration resets use the dedicated calibration reset bits rather than their configuration reset bits.
+Calibration resets use the documented calibration workflow: clear the previous calibration response, enter calibration mode, send the reset command, wait for `rsp_calibrado` and then leave calibration mode. Temperature and salinity calibration resets use the dedicated calibration reset bits rather than their configuration reset bits. While `Calibration_Mode` is active, the Smart Next protocol marks water treatment as OFF.
 
-The restart procedure is intentionally guided rather than exposed as an entity. It first verifies that `Watchdog_config` is the documented restart mode, then fully unloads AstralPool so normal polling is stopped. A dedicated Modbus client arms the minimum 60-second watchdog and closes immediately, establishing a known last communication point. After a 70-second communication-silence period, the integration reconnects, restores the previous watchdog timeout and reloads normal polling. Expect the full procedure to take roughly 70–100 seconds.
+The restart procedure is intentionally guided rather than exposed as an entity. Home Assistant first closes the maintenance options flow and starts the restart as a background task; this avoids unloading the integration while its own configuration request is still active. The background task verifies that `Watchdog_config` is the documented restart mode, fully unloads AstralPool so normal polling is stopped, then uses a dedicated Modbus client to arm the minimum 60-second watchdog and closes immediately. After a 70-second communication-silence period, the integration reconnects, restores the previous watchdog timeout and reloads normal polling. Expect the full procedure to take roughly 70–100 seconds.
 
 The operational **pH · Pump Stop · rearm** action remains available as a normal Home Assistant button.
 
