@@ -5,9 +5,7 @@
       "user": {
         "title": "Add an AstralPool device",
         "description": "Choose the AstralPool device to configure.",
-        "data": {
-          "device_type": "Device type"
-        }
+        "data": {"device_type": "Device type"}
       },
       "connection": {
         "title": "Modbus connection",
@@ -26,13 +24,21 @@
       "cannot_connect": "Unable to read the selected AstralPool device. Check the gateway address/port, TCP-to-RTU mode, serial settings and Modbus Unit ID.",
       "unknown": "Unexpected error."
     },
-    "abort": {
-      "already_configured": "This AstralPool connection is already configured."
-    }
+    "abort": {"already_configured": "This AstralPool connection is already configured."}
   },
   "options": {
+    "error": {
+      "confirmation_required": "Confirm the maintenance operation before continuing."
+    },
     "step": {
       "init": {
+        "title": "AstralPool settings",
+        "menu_options": {
+          "communication": "Communication settings",
+          "maintenance": "Smart Next maintenance"
+        }
+      },
+      "communication": {
         "title": "AstralPool communication settings",
         "data": {
           "unit_id": "Modbus Unit ID",
@@ -40,6 +46,20 @@
           "reconnect_delay": "Reconnect delay (s)",
           "scan_interval": "Polling interval (s)"
         }
+      },
+      "maintenance": {
+        "title": "Smart Next maintenance",
+        "description": "Choose a guided maintenance procedure. Only procedures supported by the detected Smart Next hardware are shown.",
+        "data": {"maintenance_action": "Procedure"}
+      },
+      "maintenance_confirm": {
+        "title": "Confirm maintenance procedure",
+        "description": "**{action}**\n\n{details}\n\nThe operation writes directly to the Smart Next over local Modbus. Confirm only if you want to execute it now.",
+        "data": {"confirm": "I understand and want to execute this procedure"}
+      },
+      "maintenance_result": {
+        "title": "Maintenance result",
+        "description": "{result}"
       }
     }
   },
@@ -229,9 +249,7 @@
       "biopool_mode_control": {"name": "System · Bio pool mode"},
       "eco_mode": {"name": "System · ECO mode"}
     },
-    "button": {
-      "reset_ph_pump_stop": {"name": "pH · reset Pump Stop"}
-    },
+    "button": {"reset_ph_pump_stop": {"name": "pH · reset Pump Stop"}},
     "time": {
       "system_time": {"name": "Schedule · device time"},
       "timer_start": {"name": "Schedule · start"},
