@@ -52,6 +52,7 @@ from .devices.smartnext.maintenance import (
     WATCHDOG_RESTART_SECONDS,
     SmartNextMaintenanceError,
     async_arm_restart_watchdog,
+    async_read_watchdog,
     async_restore_watchdog,
     async_run_calibration_reset,
     async_run_config_reset,
@@ -93,9 +94,11 @@ _MAINTENANCE_ACTION_DETAILS = {
     ACTION_RESET_SALT_CONFIG: "Restores the conductivity alarm thresholds and alarm-enable defaults.",
     ACTION_RESET_SALT_CALIBRATION: "Enters calibration mode and resets the salinity calibration.",
     ACTION_RESTART_DEVICE: (
-        "Arms the documented 60-second communication watchdog, temporarily stops "
-        "AstralPool polling, waits for the Smart Next to restart, restores the previous "
-        "watchdog timeout and reloads the integration. This takes about 60–90 seconds."
+        "Verifies the documented restart watchdog, stops AstralPool polling, then "
+        "uses a dedicated Modbus client to arm the 60-second watchdog and closes "
+        "that client immediately. After the guaranteed communication-silence period, "
+        "the integration reconnects, restores the previous watchdog timeout and "
+        "reloads. This takes about 70–100 seconds."
     ),
 }
 
@@ -111,6 +114,7 @@ _MAINTENANCE_RESULT_MESSAGES = {
     "response_not_cleared": "The previous calibration result could not be cleared.",
     "watchdog_not_restart": "The controller watchdog is not configured for restart; no restart was attempted.",
     "restart_unload_failed": "Home Assistant could not stop AstralPool polling; no restart was attempted.",
+    "restart_arm_failed": "AstralPool polling was stopped, but the restart watchdog could not be armed. The integration was reloaded without attempting a restart.",
     "restart_restore_failed": "The Smart Next restarted, but the previous watchdog timeout could not be restored automatically.",
     "unsupported_action": "This maintenance operation is not supported.",
 }
@@ -449,16 +453,36 @@ class AstralPoolOptionsFlow(config_entries.OptionsFlow):
     async def _async_restart_smartnext(self) -> str:
         """Perform a one-shot restart through the documented Modbus watchdog."""
         entry = self._config_entry
-        api = entry.runtime_data.api
-        previous_timeout = await async_arm_restart_watchdog(api)
 
+        # Refuse the procedure before disrupting the integration unless the
+        # controller explicitly reports the documented watchdog restart action.
+        _, watchdog_config = await async_read_watchdog(entry.runtime_data.api)
+        if watchdog_config != 1:
+            raise SmartNextMaintenanceError("watchdog_not_restart")
+
+        # Stop the coordinator and every AstralPool platform first. This guarantees
+        # that no normal poll can reset the watchdog timer after it is armed.
         if not await self.hass.config_entries.async_unload(entry.entry_id):
-            await async_restore_watchdog(api, previous_timeout)
             raise SmartNextMaintenanceError("restart_unload_failed")
 
-        # The protocol documents a minimum watchdog timeout of 60 seconds. With
-        # the entry unloaded there is no AstralPool Modbus traffic to feed it.
-        await asyncio.sleep(WATCHDOG_RESTART_SECONDS + 5)
+        previous_timeout: int | None = None
+        arm_api = self._new_smartnext_api()
+        try:
+            try:
+                await arm_api.async_connect()
+                previous_timeout = await async_arm_restart_watchdog(arm_api)
+            except (SmartNextCommunicationError, OSError, TimeoutError):
+                await self.hass.config_entries.async_reload(entry.entry_id)
+                raise SmartNextMaintenanceError("restart_arm_failed") from None
+        finally:
+            # Closing immediately after the 0x10 write establishes a known last
+            # Modbus communication point for the 60-second watchdog countdown.
+            await arm_api.async_close()
+
+        # Give the watchdog its full documented 60 seconds plus a safety margin
+        # before any reconnect attempt, otherwise a premature Modbus request could
+        # feed the watchdog and prevent the intended restart.
+        await asyncio.sleep(WATCHDOG_RESTART_SECONDS + 10)
 
         restored = False
         restore_api = self._new_smartnext_api()
