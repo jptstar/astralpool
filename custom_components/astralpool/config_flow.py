@@ -36,7 +36,7 @@ from .const import (
 )
 from .devices.elyo_touch.api import ElyoTouchApi, ElyoTouchCommunicationError
 from .devices.smartnext.api import SmartNextApi, SmartNextCommunicationError
-from .devices.smartnext.guided_options_safe import SmartNextGuidedCalibrationOptionsMixin
+from .devices.smartnext.guided_options_final import SmartNextGuidedCalibrationOptionsMixin
 from .devices.smartnext.maintenance import (
     ACTION_RESTART_DEVICE,
     WATCHDOG_RESTART_SECONDS,
