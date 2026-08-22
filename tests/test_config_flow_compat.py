@@ -80,8 +80,20 @@ def test_restart_is_deferred_until_options_flow_closes() -> None:
     assert "_async_restart_smartnext_background" in source
 
 
-def test_maintenance_uses_translatable_selector() -> None:
-    """Maintenance actions must use frontend translations instead of hard-coded labels."""
+def test_maintenance_is_split_into_three_guided_families() -> None:
+    """Keep restart, calibration and factory restore as separate user paths."""
     source = FLOW.read_text(encoding="utf-8")
-    assert "SelectSelector" in source
-    assert 'translation_key="maintenance_action"' in source
+    assert '"restart_device": "Redémarrer le Smart Next"' in source
+    assert '"calibrate_sensor": "Calibrer un capteur"' in source
+    assert '"restore_calibration": "Restaurer la calibration d’usine"' in source
+    assert "async_step_calibrate_sensor" in source
+    assert "async_step_restore_calibration" in source
+
+
+def test_temperature_is_the_only_guided_calibration_for_now() -> None:
+    """Do not invent pH, ORP or salinity workflows before hardware validation."""
+    source = FLOW.read_text(encoding="utf-8")
+    assert "async_step_calibrate_temperature" in source
+    assert "async_step_restore_temperature_calibration" in source
+    assert "async_calibrate_temperature" in source
+    assert "async_reset_temperature_calibration" in source
