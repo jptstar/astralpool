@@ -4,7 +4,7 @@ Local Modbus integration for supported AstralPool pool equipment.
 
 This repository combines Smart Next and Pro Elyo Touch support under a single Home Assistant domain: `astralpool`.
 
-**Stable baseline:** version 1.0.6.
+**Stable baseline:** version 1.0.7.
 
 > **Unofficial project** — This is an independent community integration. It is not developed, approved, endorsed, or maintained by AstralPool or Fluidra. AstralPool, Fluidra and their product names and trademarks remain the property of their respective owners.
 
@@ -44,28 +44,40 @@ For Smart Next software 2.00, the conductivity alarm thresholds use the verified
 
 ## Smart Next maintenance
 
-Destructive Smart Next resets are not exposed as normal Home Assistant buttons. They are available through a guided maintenance flow under **Settings → Devices & services → AstralPool → Configure → Smart Next maintenance**.
+Open **Settings → Devices & services → AstralPool → Configure → Smart Next maintenance**.
 
-The maintenance flow only shows procedures supported by the technologies detected on the connected controller, requires an explicit confirmation, executes the complete documented Modbus sequence and displays the result returned by the Smart Next when one is available. Procedure names and result messages use the Home Assistant translation system, including French translations.
+Version 1.0.7 separates maintenance into three guided families:
 
-Available procedures include:
+- **Restart Smart Next**
+- **Calibrate a sensor**
+- **Restore factory calibration**
 
-- reset Flow / Flow Cell configuration
-- reset pH configuration
-- reset pH calibration
-- reset ORP configuration
-- reset ORP calibration
-- reset temperature alarm configuration
-- reset temperature calibration
-- reset conductivity/salinity alarm configuration
-- reset conductivity/salinity calibration
-- restart the Smart Next through the documented Modbus communication watchdog
+Only procedures validated on real Smart Next hardware are exposed in the guided calibration menus. At present, **Temperature** is the only guided sensor calibration. pH, ORP and salinity remain available through the raw `Calibration TEST` entities while their exact hardware sequences are investigated.
 
-Calibration resets use the documented calibration workflow: clear the previous calibration response, enter calibration mode, send the reset command, wait for `rsp_calibrado` and then leave calibration mode. Temperature and salinity calibration resets use the dedicated calibration reset bits rather than their configuration reset bits. While `Calibration_Mode` is active, the Smart Next protocol marks water treatment as OFF.
+### Guided temperature calibration
+
+The temperature workflow has been validated directly on real hardware.
+
+To apply a new reference temperature, Home Assistant:
+
+1. writes the requested temperature multiplied by 10 to holding register `0x22`;
+2. triggers temperature calibration coil `0xB0F`;
+3. waits **15 seconds** for the Smart Next to apply the new calibration;
+4. refreshes the device data.
+
+Example: entering `29.0 °C` writes `290` to holding register `0x22` before triggering `0xB0F`.
+
+To restore the factory temperature calibration, Home Assistant:
+
+1. triggers reset coil `0xB0D`;
+2. waits **15 seconds** for the controller to restore the factory calibration;
+3. refreshes the device data.
+
+These temperature procedures intentionally do not enter the generic `Calibration_Mode` or manipulate flow/electrolysis settings because that is not part of the physically validated temperature sequence.
 
 ### Raw calibration test entities
 
-Version 1.0.6 temporarily exposes the documented calibration primitives as normal Home Assistant entities so the exact controller sequence can be validated on real hardware. Their names start with **Calibration TEST** and include the Modbus address.
+The integration temporarily exposes the documented calibration primitives as normal Home Assistant entities so the exact controller sequences can be validated on real hardware. Their names start with **Calibration TEST** and include the Modbus address.
 
 Available raw test entities are:
 
@@ -79,7 +91,7 @@ Available raw test entities are:
 - temperature buttons: reset `0xB0D`, calibration `0xB0F`
 - salinity buttons: reset `0xC0D`, calibration `0xC0F`
 
-The raw command buttons intentionally write only `1` to their documented volatile coil. They do **not** add an automatic release, calibration mode transition, delay or response handling. This is deliberate: the entities are intended to identify the real sequence used by the Smart Next before that sequence is encoded again as a guided maintenance procedure.
+The raw command buttons intentionally write only `1` to their documented volatile coil. They do **not** add an automatic release, calibration mode transition, delay or response handling. This is deliberate: the entities are intended to identify the real sequence used by the Smart Next before that sequence is encoded as a guided maintenance procedure.
 
 The raw response sensor reports the numeric `rsp_calibrado` code and adds its documented meaning as an entity attribute: `0` no response, `1` OK, `2` E2, `3` E3, `4` unavailable, `5` device initializing and `16` first calibration point OK.
 
