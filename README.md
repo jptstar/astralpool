@@ -4,7 +4,7 @@ Local Modbus integration for supported AstralPool pool equipment.
 
 This repository combines Smart Next and Pro Elyo Touch support under a single Home Assistant domain: `astralpool`.
 
-**Stable baseline:** version 1.0.5.
+**Stable baseline:** version 1.0.6.
 
 > **Unofficial project** — This is an independent community integration. It is not developed, approved, endorsed, or maintained by AstralPool or Fluidra. AstralPool, Fluidra and their product names and trademarks remain the property of their respective owners.
 
@@ -62,6 +62,26 @@ Available procedures include:
 - restart the Smart Next through the documented Modbus communication watchdog
 
 Calibration resets use the documented calibration workflow: clear the previous calibration response, enter calibration mode, send the reset command, wait for `rsp_calibrado` and then leave calibration mode. Temperature and salinity calibration resets use the dedicated calibration reset bits rather than their configuration reset bits. While `Calibration_Mode` is active, the Smart Next protocol marks water treatment as OFF.
+
+### Raw calibration test entities
+
+Version 1.0.6 temporarily exposes the documented calibration primitives as normal Home Assistant entities so the exact controller sequence can be validated on real hardware. Their names start with **Calibration TEST** and include the Modbus address.
+
+Available raw test entities are:
+
+- switch: calibration mode `0x201`
+- binary sensor: treatment halted `0x202`
+- button: clear calibration response `0x203`
+- number: raw calibration value holding register `0x22`
+- sensor: raw calibration response input register `0x22`
+- pH buttons: reset `0x50C`, pH 7 point `0x50D`, pH 4 point `0x50E`, fast calibration `0x50F`
+- ORP buttons: reset `0x80C`, 470 mV calibration `0x80F`
+- temperature buttons: reset `0xB0D`, calibration `0xB0F`
+- salinity buttons: reset `0xC0D`, calibration `0xC0F`
+
+The raw command buttons intentionally write only `1` to their documented volatile coil. They do **not** add an automatic release, calibration mode transition, delay or response handling. This is deliberate: the entities are intended to identify the real sequence used by the Smart Next before that sequence is encoded again as a guided maintenance procedure.
+
+The raw response sensor reports the numeric `rsp_calibrado` code and adds its documented meaning as an entity attribute: `0` no response, `1` OK, `2` E2, `3` E3, `4` unavailable, `5` device initializing and `16` first calibration point OK.
 
 The restart procedure is intentionally guided rather than exposed as an entity. Home Assistant first closes the maintenance options flow and starts the restart as a background task; this avoids unloading the integration while its own configuration request is still active. The background task verifies that `Watchdog_config` is the documented restart mode, fully unloads AstralPool so normal polling is stopped, then uses a dedicated Modbus client to arm the minimum 60-second watchdog and closes immediately. After a 70-second communication-silence period, the integration reconnects, restores the previous watchdog timeout and reloads normal polling. Expect the full procedure to take roughly 70–100 seconds.
 
