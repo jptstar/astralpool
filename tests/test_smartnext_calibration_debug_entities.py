@@ -52,4 +52,4 @@ def test_raw_calibration_buttons_do_not_hide_a_release_step() -> None:
 def test_calibration_debug_points_are_polled_with_coordinator() -> None:
     source = (ROOT / "coordinator.py").read_text(encoding="utf-8")
     assert "async_read_calibration_debug" in source
-    assert "data.update(await async_read_calibration_debug(self.api))" in source
+    assert "data.update(await async_read_calibration_debug(self.api, data))" in source
