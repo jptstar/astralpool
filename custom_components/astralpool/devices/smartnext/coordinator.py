@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import SmartNextApi, SmartNextCommunicationError
+from .calibration_debug import async_read_calibration_debug
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,6 +34,8 @@ class SmartNextCoordinator(DataUpdateCoordinator[dict]):
 
     async def _async_update_data(self) -> dict:
         try:
-            return await self.api.async_read_all()
+            data = await self.api.async_read_all()
+            data.update(await async_read_calibration_debug(self.api))
+            return data
         except SmartNextCommunicationError as err:
             raise UpdateFailed(str(err)) from err
