@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .calibration_debug import COIL_CALIBRATION_MODE
 from .entity import SmartNextEntity
 
 Setter = Callable[[bool], Awaitable[None]]
@@ -21,7 +22,8 @@ class SmartNextSwitchDescription(SwitchEntityDescription):
     """Describe a SmartNext configuration switch."""
 
     data_key: str
-    setter_name: str
+    setter_name: str | None = None
+    coil_address: int | None = None
 
 
 SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
@@ -136,6 +138,15 @@ SWITCHES: tuple[SmartNextSwitchDescription, ...] = (
         entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=True,
     ),
+    SmartNextSwitchDescription(
+        key="calibration_mode_raw",
+        name="Calibration TEST · Mode calibration (0x201)",
+        data_key="calibration_mode_raw",
+        coil_address=COIL_CALIBRATION_MODE,
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=True,
+        icon="mdi:flask-outline",
+    ),
 )
 
 
@@ -177,11 +188,18 @@ class SmartNextSwitch(SmartNextEntity, SwitchEntity):
         return bool(self.coordinator.data.get(self.entity_description.data_key))
 
     async def _async_set_state(self, enabled: bool) -> None:
-        setter: Setter = getattr(
-            self.coordinator.api,
-            self.entity_description.setter_name,
-        )
-        await setter(enabled)
+        if self.entity_description.coil_address is not None:
+            await self.coordinator.api.async_write_coil(
+                self.entity_description.coil_address,
+                enabled,
+            )
+        else:
+            assert self.entity_description.setter_name is not None
+            setter: Setter = getattr(
+                self.coordinator.api,
+                self.entity_description.setter_name,
+            )
+            await setter(enabled)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_on(self, **kwargs) -> None:
