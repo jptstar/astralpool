@@ -59,9 +59,14 @@ def test_guided_calibration_options_are_fully_translated() -> None:
         "calibrate_ph_standard_outlet_closed",
         "calibrate_ph_standard_probe_loosened",
         "calibrate_ph_standard_drain_pulse",
+        "calibrate_ph_standard_ph7_immerse",
         "calibrate_ph_standard_ph7",
+        "calibrate_ph_standard_ph4_immerse",
         "calibrate_ph_standard_ph4",
         "calibrate_ph_standard_error",
+        "calibrate_ph_standard_next_sensor",
+        "calibrate_ph_standard_chain_orp",
+        "calibrate_ph_standard_chain_orp_immerse",
         "calibrate_ph_standard_restore",
         "calibrate_ph_standard_restore_inlet",
         "calibrate_ph_standard_restore_outlet",
@@ -74,8 +79,12 @@ def test_guided_calibration_options_are_fully_translated() -> None:
         "calibrate_orp_outlet_closed",
         "calibrate_orp_probe_loosened",
         "calibrate_orp_drain_pulse",
+        "calibrate_orp_immerse",
         "calibrate_orp_470",
         "calibrate_orp_error",
+        "calibrate_orp_next_sensor",
+        "calibrate_orp_chain_ph",
+        "calibrate_orp_chain_ph7_immerse",
         "calibrate_orp_restore",
         "calibrate_orp_restore_inlet",
         "calibrate_orp_restore_outlet",
@@ -88,3 +97,17 @@ def test_guided_calibration_options_are_fully_translated() -> None:
     assert guided_steps <= source["step"].keys()
     for step in guided_steps:
         assert french["step"][step]["title"]
+
+
+def test_guided_calibration_safety_errors_are_translated() -> None:
+    source = _load(ROOT / "strings.json")["options"]["error"]
+    french = _load(ROOT / "translations/fr.json")["options"]["error"]
+    for key in (
+        "ph_pump_not_stopped",
+        "electrolysis_safety_lost",
+        "stabilization_wait",
+        "measurement_not_confirmed_stable",
+        "calibration_mode_not_released",
+    ):
+        assert source[key]
+        assert french[key]

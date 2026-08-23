@@ -1,5 +1,7 @@
 """Basic mapping and conversion tests for SmartNext."""
 
+from pathlib import Path
+
 
 def uint16_to_int16(value: int) -> int:
     return value - 65536 if value > 32767 else value
@@ -23,6 +25,18 @@ def test_scaling_reference_values() -> None:
     assert 365 / 100 == 3.65
     assert 256 / 10 == 25.6
     assert 1741 / 100 == 17.41
+
+
+def test_chlorine_production_hardware_scaling() -> None:
+    """IR 0x45 is hardware-verified as tenths of g/h."""
+    assert 36 / 10 == 3.6
+    assert 60 / 10 == 6.0
+
+    sensor_source = Path(
+        "custom_components/astralpool/devices/smartnext/sensor.py"
+    ).read_text(encoding="utf-8")
+    assert 'key == "electrolysis_chlorine_production"' in sensor_source
+    assert "return value / 10" in sensor_source
 
 
 def test_32bit_hour_counter() -> None:

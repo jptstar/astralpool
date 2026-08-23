@@ -254,7 +254,15 @@ class SmartNextSensor(SmartNextEntity, SensorEntity):
 
     @property
     def native_value(self) -> Any:
-        return self.coordinator.data.get(self.entity_description.data_key)
+        value = self.coordinator.data.get(self.entity_description.data_key)
+        if (
+            self.entity_description.key == "electrolysis_chlorine_production"
+            and value is not None
+        ):
+            # Hardware validation on a 12 g/h Smart Next confirms that IR 0x45
+            # is encoded in tenths of g/h (e.g. raw 36 = 3.6 g/h).
+            return value / 10
+        return value
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
