@@ -100,11 +100,9 @@ def test_persistent_zero_disables_only_active_optional_electrolysis_controls() -
 
 def test_flow_inputs_stay_disabled_after_normal_terminal_result() -> None:
     source = _source(FINAL_OPTIONS)
-    terminal = _function_source(
-        source,
-        "_async_terminal_flow_restore",
-        "async_remove",
-    )
+    start = source.index("async def _async_terminal_flow_restore")
+    end = source.index("def async_remove", start)
+    terminal = source[start:end]
     assert "Keep flow disabled after terminal results" in terminal
     assert "async_verify_electrolysis_stopped" in terminal
     assert "async_verify_ph_pump_stopped" in terminal
@@ -125,7 +123,9 @@ def test_flow_inputs_stay_disabled_after_normal_terminal_result() -> None:
 
 def test_cancelled_flow_restores_saved_flow_sensors_and_keeps_zero_production() -> None:
     final = _source(FINAL_OPTIONS)
-    remove = final[final.index("def async_remove"): final.index("async def async_step_calibrate_ph_standard_prepare")]
+    start = final.index("def async_remove")
+    end = final.index("async def async_step_calibrate_ph_standard_prepare", start)
+    remove = final[start:end]
     assert "async_restore_interrupted_flow_sensors_until_success" in remove
 
     session = _source(SESSION)
