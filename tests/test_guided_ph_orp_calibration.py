@@ -8,8 +8,10 @@ from pathlib import Path
 
 ROOT = Path("custom_components/astralpool/devices/smartnext")
 GUIDED = ROOT / "guided_calibration.py"
+SESSION = ROOT / "calibration_session.py"
 SAFE_OPTIONS = ROOT / "guided_options_safe.py"
 FINAL_OPTIONS = ROOT / "guided_options_final.py"
+COORDINATOR = ROOT / "coordinator.py"
 CONFIG_FLOW = Path("custom_components/astralpool/config_flow.py")
 
 
@@ -66,74 +68,126 @@ def test_standard_ph_and_orp_do_not_rearm_after_terminal_result() -> None:
     assert "async_rearm_calibration_mode" not in orp
 
 
-def test_persistent_zero_and_real_ph_pump_safety_are_established() -> None:
-    source = _source(GUIDED)
-    prepare = _function_source(
+def test_persistent_session_saves_original_state_before_flow_is_disabled() -> None:
+    source = _source(SESSION)
+    activate = _function_source(
         source,
-        "async_prepare_bypassed_calibration",
-        "async_confirm_filtration_stopped",
+        "async_activate_persistent_calibration",
+        "async_prepare_persistent_calibration",
     )
-    assert "COIL_PH_PUMP_STOP_ENABLE, True" in prepare
-    assert "COIL_ELECTROLYSIS_BOOST, False" in prepare
-    assert "COIL_ELECTROLYSIS_COVER_CONTROL_ENABLE, False" in prepare
-    assert "COIL_ELECTROLYSIS_EXTERNAL_CONTROL_ENABLE, False" in prepare
-    assert "COIL_ELECTROLYSIS_INTERNAL_ORP_CONTROL_ENABLE, False" in prepare
-    assert "HR_ELECTROLYSIS_NORMAL_SETPOINT, 0" in prepare
-    assert "async_verify_electrolysis_stopped(api)" in prepare
-    assert "async_start_calibration_session" not in prepare
+    save = activate.index("await async_save_persistent_calibration(hass, api, saved)")
+    zero = activate.index("await _async_hold_electrolysis_at_zero(api, saved)")
+    flow_off = activate.index("await _async_set_flow_sensors(api, False, False)")
+    assert save < zero < flow_off
+    assert "COIL_PH_PUMP_STOP_ENABLE, True" in activate
+    assert "async_verify_electrolysis_stopped(api)" in activate
+    assert "async_verify_ph_pump_stopped(api)" in activate
 
-    verify_pump = _function_source(
+
+def test_persistent_zero_disables_only_active_optional_electrolysis_controls() -> None:
+    source = _source(SESSION)
+    hold = _function_source(
         source,
-        "async_verify_ph_pump_stopped",
+        "_async_hold_electrolysis_at_zero",
         "_async_set_flow_sensors",
     )
-    assert "IR_PH_PUMP_OUTPUT" in verify_pump
-    assert "output == 0" in verify_pump
-    assert "ph_pump_not_stopped" in verify_pump
+    assert "COIL_ELECTROLYSIS_BOOST, False" in hold
+    assert "COIL_ELECTROLYSIS_COVER_CONTROL_ENABLE, False" in hold
+    assert "COIL_ELECTROLYSIS_EXTERNAL_CONTROL_ENABLE, False" in hold
+    assert "COIL_ELECTROLYSIS_INTERNAL_ORP_CONTROL_ENABLE, False" in hold
+    assert "HR_ELECTROLYSIS_NORMAL_SETPOINT, 0" in hold
 
 
-def test_flow_inputs_are_disabled_only_after_201_is_confirmed() -> None:
-    source = _source(GUIDED)
-    begin = _function_source(
+def test_flow_inputs_stay_disabled_after_normal_terminal_result() -> None:
+    source = _source(FINAL_OPTIONS)
+    terminal = _function_source(
         source,
-        "async_begin_bypassed_calibration",
-        "async_restore_bypassed_calibration",
-    )
-    mode = begin.index("await async_rearm_calibration_mode(api)")
-    halted = begin.index("treatment_not_halted")
-    flow_off = begin.index("await _async_set_flow_sensors(api, False, False)")
-    clear = begin.index("await async_clear_response_in_active_mode(api, force=True)")
-    assert mode < halted < flow_off < clear
-
-
-def test_flow_inputs_restore_immediately_after_every_terminal_exit() -> None:
-    safe = _source(SAFE_OPTIONS)
-    helper = _function_source(
-        safe,
         "_async_terminal_flow_restore",
-        "async_step_calibrate_ph_standard_filtration_off",
+        "async_remove",
     )
-    assert "async_restore_flow_sensors_immediately" in helper
+    assert "Keep flow disabled after terminal results" in terminal
+    assert "async_verify_electrolysis_stopped" in terminal
+    assert "async_verify_ph_pump_stopped" in terminal
 
+    ph4 = _function_source(
+        source,
+        "async_step_calibrate_ph_standard_ph4",
+        "async_step_calibrate_orp_470",
+    )
+    orp = _function_source(
+        source,
+        "async_step_calibrate_orp_470",
+        "async_step_calibrate_ph_standard_retry",
+    )
+    assert "_async_terminal_flow_restore" in ph4
+    assert "_async_terminal_flow_restore" in orp
+
+
+def test_cancelled_flow_restores_saved_flow_sensors_and_keeps_zero_production() -> None:
     final = _source(FINAL_OPTIONS)
-    failure_helper = _function_source(
-        final,
-        "_async_record_failure_and_restore",
+    remove = final[final.index("def async_remove"): final.index("async def async_step_calibrate_ph_standard_prepare")]
+    assert "async_restore_interrupted_flow_sensors_until_success" in remove
+
+    session = _source(SESSION)
+    restore = _function_source(
+        session,
+        "async_restore_interrupted_flow_sensors",
+        "async_restore_interrupted_flow_sensors_until_success",
+    )
+    zero = restore.index("await _async_hold_electrolysis_at_zero(api, saved)")
+    flow = restore.index("await _async_set_flow_sensors")
+    clear = restore.index("await async_clear_persistent_calibration(hass, api)")
+    assert zero < flow < clear
+    assert "saved.internal_flow_enabled" in restore
+    assert "saved.external_flow_enabled" in restore
+
+
+def test_startup_recovers_flow_after_interrupted_home_assistant_session() -> None:
+    source = _source(COORDINATOR)
+    assert "async_recover_interrupted_calibration" in source
+    update = _function_source(source, "_async_update_data")
+    recovery = update.index("await async_recover_interrupted_calibration")
+    read_all = update.index("await self.api.async_read_all()")
+    assert recovery < read_all
+
+
+def test_real_output_guard_restores_flow_if_pump_or_electrolysis_starts() -> None:
+    source = _source(FINAL_OPTIONS)
+    guard = _function_source(
+        source,
+        "_async_calibration_guard",
+        "_async_guard_error_result",
+    )
+    assert "IR_ELECTROLYSIS_PRODUCTION" in guard
+    assert "IR_ELECTROLYSIS_CURRENT" in guard
+    assert "DI_ELECTROLYSIS_RUNNING" in guard
+    assert "IR_PH_PUMP_OUTPUT" in guard
+    assert "async_restore_interrupted_flow_sensors_until_success" in guard
+
+
+def test_201_is_started_before_probe_removal_and_stabilization() -> None:
+    source = _source(FINAL_OPTIONS)
+    ph = _function_source(
+        source,
+        "async_step_calibrate_ph_standard_drain_pulse",
+        "async_step_calibrate_orp_drain_pulse",
+    )
+    orp = _function_source(
+        source,
+        "async_step_calibrate_orp_drain_pulse",
         "async_step_calibrate_ph_standard_ph7",
     )
-    assert "_async_terminal_flow_restore" in failure_helper
-    for name, next_name in (
-        ("async_step_calibrate_ph_standard_ph7", "async_step_calibrate_ph_standard_ph4"),
-        ("async_step_calibrate_ph_standard_ph4", "async_step_calibrate_orp_470"),
-        ("async_step_calibrate_orp_470", None),
-    ):
-        function = _function_source(final, name, next_name)
-        assert "_async_terminal_flow_restore" in function or "_async_record_failure_and_restore" in function
+    assert ph.index("async_begin_bypassed_calibration") < ph.index(
+        "async_step_calibrate_ph_standard_ph7_immerse"
+    )
+    assert orp.index("async_begin_bypassed_calibration") < orp.index(
+        "async_step_calibrate_orp_immerse"
+    )
 
 
 def test_one_minute_stabilization_is_mandatory_for_ph7_ph4_and_orp() -> None:
-    source = _source(SAFE_OPTIONS)
-    tree = ast.parse(source)
+    safe = _source(SAFE_OPTIONS)
+    tree = ast.parse(safe)
     assignments = {
         node.target.id: node.value.value
         for node in ast.walk(tree)
@@ -142,33 +196,50 @@ def test_one_minute_stabilization_is_mandatory_for_ph7_ph4_and_orp() -> None:
         and isinstance(node.value, ast.Constant)
     }
     assert assignments["STABILIZATION_SECONDS"] == 60.0
+
     final = _source(FINAL_OPTIONS)
     for name, next_name in (
         ("async_step_calibrate_ph_standard_ph7", "async_step_calibrate_ph_standard_ph4"),
         ("async_step_calibrate_ph_standard_ph4", "async_step_calibrate_orp_470"),
-        ("async_step_calibrate_orp_470", None),
+        ("async_step_calibrate_orp_470", "async_step_calibrate_ph_standard_retry"),
     ):
         function = _function_source(final, name, next_name)
         assert "STABILIZATION_SECONDS" in function
         assert "measurement_not_confirmed_stable" in function
 
 
-def test_retry_is_explicit_and_errors_never_rearm_201_automatically() -> None:
-    safe = _source(SAFE_OPTIONS)
-    ph_error = _function_source(
-        safe,
-        "async_step_calibrate_ph_standard_error",
+def test_retry_is_explicit_and_starts_a_fresh_201_session() -> None:
+    source = _source(FINAL_OPTIONS)
+    ph_retry = _function_source(
+        source,
         "async_step_calibrate_ph_standard_retry",
-    )
-    orp_error = _function_source(
-        safe,
-        "async_step_calibrate_orp_error",
         "async_step_calibrate_orp_retry",
     )
-    assert "async_rearm_calibration_mode" not in ph_error
-    assert "async_rearm_calibration_mode" not in orp_error
-    assert "calibrate_ph_standard_retry" in ph_error
-    assert "calibrate_orp_retry" in orp_error
+    orp_retry = _function_source(
+        source,
+        "async_step_calibrate_orp_retry",
+        "async_step_calibrate_ph_standard_chain_orp",
+    )
+    for function in (ph_retry, orp_retry):
+        assert "async_activate_persistent_calibration" in function
+        assert "async_begin_bypassed_calibration" in function
+
+
+def test_second_probe_gets_a_fresh_201_session_before_removal() -> None:
+    source = _source(FINAL_OPTIONS)
+    ph_to_orp = _function_source(
+        source,
+        "async_step_calibrate_ph_standard_chain_orp",
+        "async_step_calibrate_orp_chain_ph",
+    )
+    orp_to_ph = _function_source(
+        source,
+        "async_step_calibrate_orp_chain_ph",
+        "async_step_calibrate_ph_standard_restore_filtration",
+    )
+    for function in (ph_to_orp, orp_to_ph):
+        assert "async_activate_persistent_calibration" in function
+        assert "async_begin_bypassed_calibration" in function
 
 
 def test_success_offers_other_probe_without_repeating_hydraulic_preparation() -> None:
@@ -187,24 +258,11 @@ def test_success_offers_other_probe_without_repeating_hydraulic_preparation() ->
     } <= methods
 
     final = _source(FINAL_OPTIONS)
-    assert "async_step_calibrate_ph_standard_next_sensor" in final
-    assert "async_step_calibrate_orp_next_sensor" in final
+    assert "async_step_calibrate_ph_standard_chain_orp" in final
+    assert "async_step_calibrate_orp_chain_ph" in final
 
 
-def test_mode_activation_must_be_verified_promptly() -> None:
-    source = _source(GUIDED)
-    tree = ast.parse(source)
-    assignments = {
-        node.target.id: node.value.value
-        for node in ast.walk(tree)
-        if isinstance(node, ast.AnnAssign)
-        and isinstance(node.target, ast.Name)
-        and isinstance(node.value, ast.Constant)
-    }
-    assert assignments["CALIBRATION_MODE_MAX_REARM_SECONDS"] == 10.0
-
-
-def test_restore_keeps_production_zero_until_flow_is_confirmed() -> None:
+def test_restore_keeps_production_zero_until_saved_flow_is_restored() -> None:
     source = _source(GUIDED)
     restore = _function_source(
         source,
@@ -216,6 +274,20 @@ def test_restore_keeps_production_zero_until_flow_is_confirmed() -> None:
     assert flow < production
     assert "flow_not_restored" in restore
     assert "COIL_PH_PUMP_STOP_ENABLE, saved.ph_pump_stop_enabled" in restore
+
+
+def test_final_restore_clears_persistent_recovery_only_after_success() -> None:
+    source = _source(FINAL_OPTIONS)
+    ph = _function_source(
+        source,
+        "async_step_calibrate_ph_standard_restore_filtration",
+        "async_step_calibrate_orp_restore_filtration",
+    )
+    orp = _function_source(source, "async_step_calibrate_orp_restore_filtration")
+    assert "if self._ph_saved_state is None" in ph
+    assert "async_clear_persistent_calibration" in ph
+    assert "if self._orp_saved_state is None" in orp
+    assert "async_clear_persistent_calibration" in orp
 
 
 def test_factory_resets_force_201_then_203_then_reset_command() -> None:
