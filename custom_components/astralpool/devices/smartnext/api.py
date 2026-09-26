@@ -149,6 +149,7 @@ class SmartNextApi:
         self._identification: dict[str, Any] | None = None
         self._firmware_version_raw: int | None = None
         self._salt_threshold_addresses_cache: tuple[int, int] | None = None
+        self._eco_mode_available: bool | None = None
 
     @property
     def connected(self) -> bool:
@@ -382,6 +383,24 @@ class SmartNextApi:
         await asyncio.sleep(0.2)
         await self.async_write_coil(COIL_PH_PUMP_STOP_RESET, False)
 
+    async def _async_read_eco_mode(self, data: dict[str, Any]) -> None:
+        """Read the optional ECO HMI coil once per connection lifetime.
+
+        Some Smart Next firmware accepts writes to this extended HMI coil but
+        never answers function 0x01 reads. Repeating the probe stalls every
+        coordinator cycle and produces a pymodbus retry error.
+        """
+        if self._eco_mode_available is False:
+            return
+
+        try:
+            data["eco_mode"] = (await self._read_coils(COIL_ECO_MODE_ENABLE, 1))[0]
+        except SmartNextCommunicationError as err:
+            self._eco_mode_available = False
+            _LOGGER.info("SmartNext ECO mode is unavailable: %s", err)
+        else:
+            self._eco_mode_available = True
+
     async def async_read_all(self) -> dict[str, Any]:
         """Read the verified Smart Next operating and configuration points."""
         data = dict(await self._async_read_identification())
@@ -456,13 +475,9 @@ class SmartNextApi:
         data["technology_salt_enabled"] = bool(technologies_enabled & (1 << 5))
         data["biopool_mode"] = bool(technologies_enabled & (1 << 9))
 
-        # ECO is stored in the HMI configuration coil. Keep it optional so an
-        # older controller that does not expose that extended address does not
-        # make the complete coordinator update fail.
-        try:
-            data["eco_mode"] = (await self._read_coils(COIL_ECO_MODE_ENABLE, 1))[0]
-        except SmartNextCommunicationError as err:
-            _LOGGER.debug("SmartNext ECO mode is unavailable: %s", err)
+        # ECO is optional on Smart Next firmware that does not expose its
+        # extended HMI coil for reads.
+        await self._async_read_eco_mode(data)
 
         flow_control = (
             await self._read_holding_registers(HR_FLOW_CONTROL_WORD, 1)

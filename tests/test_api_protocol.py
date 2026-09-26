@@ -178,6 +178,25 @@ def test_clients_for_the_same_gateway_share_one_transport_lock() -> None:
     assert first._lock is not other_gateway._lock
 
 
+def test_unsupported_eco_coil_is_probed_only_once() -> None:
+    api_module = _load_api_module()
+    api = api_module.SmartNextApi("127.0.0.1", 502, 5, 10, 2)
+    attempts = 0
+
+    async def unavailable(address: int, count: int) -> list[bool]:
+        nonlocal attempts
+        attempts += 1
+        raise api_module.SmartNextCommunicationError("no response")
+
+    api._read_coils = unavailable
+    data: dict = {}
+    asyncio.run(api._async_read_eco_mode(data))
+    asyncio.run(api._async_read_eco_mode(data))
+
+    assert attempts == 1
+    assert data == {}
+
+
 def test_polarity_period_writes_only_its_two_documented_coils() -> None:
     api_module = _load_api_module()
     api = api_module.SmartNextApi("127.0.0.1", 502, 5, 10, 2)
