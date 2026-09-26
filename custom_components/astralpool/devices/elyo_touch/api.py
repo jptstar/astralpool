@@ -1,12 +1,12 @@
 """Async Modbus TCP API for AstralPool Pro Elyo Touch."""
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
+from ..modbus import endpoint_lock
 from .const import (
     ALARM_KEYS,
     COIL_HVAC_MODE_BIT1,
@@ -67,7 +67,8 @@ class ElyoTouchApi:
         self.timeout = timeout
         self.reconnect_delay = reconnect_delay
         self.unit_id = unit_id
-        self._lock = asyncio.Lock()
+        # Share one lock per TCP-to-RTU gateway across all AstralPool entries.
+        self._lock = endpoint_lock(host, port)
         self._client = AsyncModbusTcpClient(
             host,
             port=port,
@@ -94,9 +95,10 @@ class ElyoTouchApi:
         """Close the Modbus client."""
         self._client.close()
 
-    @staticmethod
-    def _check(response: Any, operation: str) -> Any:
+    def _check(self, response: Any, operation: str) -> Any:
         if response is None or response.isError():
+            # Discard late data from a failed RTU transaction before retrying.
+            self._client.close()
             raise ElyoTouchCommunicationError(
                 f"Modbus error while {operation}: {response!r}"
             )

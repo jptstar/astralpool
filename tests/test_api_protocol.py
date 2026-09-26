@@ -8,8 +8,18 @@ import types
 
 
 def _load_api_module():
-    package_name = "smartnext_protocol_test"
+    root_package_name = "smartnext_protocol_test"
+    devices_package_name = f"{root_package_name}.devices"
+    package_name = f"{devices_package_name}.smartnext"
     package_path = Path("custom_components/astralpool/devices/smartnext").resolve()
+
+    root_package = types.ModuleType(root_package_name)
+    root_package.__path__ = [str(package_path.parents[2])]
+    sys.modules[root_package_name] = root_package
+
+    devices_package = types.ModuleType(devices_package_name)
+    devices_package.__path__ = [str(package_path.parent)]
+    sys.modules[devices_package_name] = devices_package
 
     package = types.ModuleType(package_name)
     package.__path__ = [str(package_path)]
@@ -28,6 +38,14 @@ def _load_api_module():
     sys.modules["pymodbus"] = pymodbus
     sys.modules["pymodbus.client"] = pymodbus_client
     sys.modules["pymodbus.exceptions"] = pymodbus_exceptions
+
+    transport_name = f"{devices_package_name}.modbus"
+    transport_spec = importlib.util.spec_from_file_location(
+        transport_name, package_path.parent / "modbus.py"
+    )
+    transport_module = importlib.util.module_from_spec(transport_spec)
+    sys.modules[transport_name] = transport_module
+    transport_spec.loader.exec_module(transport_module)
 
     for module_name in ("const", "api"):
         qualified_name = f"{package_name}.{module_name}"
@@ -147,6 +165,17 @@ def test_firmware_version_decoder_supports_decimal_and_legacy_encoding() -> None
     assert decode(200) == "2.00"
     assert decode(0x0170) == "1.70"
     assert decode(0x0200) == "2.00"
+
+
+def test_clients_for_the_same_gateway_share_one_transport_lock() -> None:
+    api_module = _load_api_module()
+
+    first = api_module.SmartNextApi("POOL-GATEWAY", 502, 5, 10, 1)
+    second = api_module.SmartNextApi("pool-gateway", 502, 5, 10, 9)
+    other_gateway = api_module.SmartNextApi("pool-gateway", 503, 5, 10, 2)
+
+    assert first._lock is second._lock
+    assert first._lock is not other_gateway._lock
 
 
 def test_polarity_period_writes_only_its_two_documented_coils() -> None:

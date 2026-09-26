@@ -8,8 +8,18 @@ import types
 
 
 def _load_api_module():
-    package_name = "elyo_protocol_test"
+    root_package_name = "elyo_protocol_test"
+    devices_package_name = f"{root_package_name}.devices"
+    package_name = f"{devices_package_name}.elyo_touch"
     package_path = Path("custom_components/astralpool/devices/elyo_touch").resolve()
+
+    root_package = types.ModuleType(root_package_name)
+    root_package.__path__ = [str(package_path.parents[2])]
+    sys.modules[root_package_name] = root_package
+
+    devices_package = types.ModuleType(devices_package_name)
+    devices_package.__path__ = [str(package_path.parent)]
+    sys.modules[devices_package_name] = devices_package
 
     package = types.ModuleType(package_name)
     package.__path__ = [str(package_path)]
@@ -28,6 +38,14 @@ def _load_api_module():
     sys.modules["pymodbus"] = pymodbus
     sys.modules["pymodbus.client"] = pymodbus_client
     sys.modules["pymodbus.exceptions"] = pymodbus_exceptions
+
+    transport_name = f"{devices_package_name}.modbus"
+    transport_spec = importlib.util.spec_from_file_location(
+        transport_name, package_path.parent / "modbus.py"
+    )
+    transport_module = importlib.util.module_from_spec(transport_spec)
+    sys.modules[transport_name] = transport_module
+    transport_spec.loader.exec_module(transport_module)
 
     for module_name in ("const", "api"):
         qualified_name = f"{package_name}.{module_name}"

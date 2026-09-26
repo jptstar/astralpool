@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
+from ..modbus import endpoint_lock
 from .const import (
     COIL_BIOPOOL_MODE_ENABLE,
     COIL_ECO_MODE_ENABLE,
@@ -137,7 +137,9 @@ class SmartNextApi:
         self.timeout = timeout
         self.reconnect_delay = reconnect_delay
         self.unit_id = unit_id
-        self._lock = asyncio.Lock()
+        # The gateway's RTU bus is shared by every AstralPool config entry using
+        # this host and port, not merely by this API instance.
+        self._lock = endpoint_lock(host, port)
         self._client = AsyncModbusTcpClient(
             host,
             port=port,
@@ -168,9 +170,11 @@ class SmartNextApi:
         """Close the Modbus connection."""
         self._client.close()
 
-    @staticmethod
-    def _check_response(response: Any, operation: str) -> Any:
+    def _check_response(self, response: Any, operation: str) -> Any:
         if response is None or response.isError():
+            # A timeout may leave a delayed RTU response in the TCP stream.  Do
+            # not reuse that stream for the next transaction.
+            self._client.close()
             raise SmartNextCommunicationError(
                 f"Modbus error while {operation}: {response!r}"
             )
