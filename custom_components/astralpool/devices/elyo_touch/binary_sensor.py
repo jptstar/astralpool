@@ -14,6 +14,7 @@ class ElyoTouchBinaryDescription(BinarySensorEntityDescription): data_key: str
 STATUS = (
     ElyoTouchBinaryDescription(key="running", translation_key="running", data_key="running", device_class=BinarySensorDeviceClass.RUNNING),
     ElyoTouchBinaryDescription(key="compressor_running", translation_key="compressor_running", data_key="compressor_running", device_class=BinarySensorDeviceClass.RUNNING),
+    ElyoTouchBinaryDescription(key="running_while_off", translation_key="running_while_off", data_key="running_while_off", device_class=BinarySensorDeviceClass.PROBLEM),
     ElyoTouchBinaryDescription(key="defrost", translation_key="defrost", data_key="defrost", device_class=BinarySensorDeviceClass.RUNNING),
     ElyoTouchBinaryDescription(key="filter_priority_mode", translation_key="filter_priority_mode", data_key="filter_priority_mode"),
     ElyoTouchBinaryDescription(key="timer_enabled", translation_key="timer_enabled", data_key="timer_enabled"),

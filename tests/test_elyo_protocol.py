@@ -210,3 +210,73 @@ def test_temperature_limit_uses_control_word_not_incoherent_status_bits() -> Non
         assert "35" in str(err)
     else:
         raise AssertionError("Cooling setpoint above 35 °C should be rejected")
+
+
+def test_hvac_action_reports_compressor_and_fan_when_start_stop_reads_stopped() -> None:
+    api_module = _load_api_module()
+    action = api_module.ElyoTouchApi._hvac_action
+
+    # Start/Stop (bit 8) is 0, compressor bit 6 is on: not "off".
+    assert action(1 << 6) == "heating"
+    assert action((1 << 6) | (1 << 4)) == "cooling"
+    assert action((1 << 6) | (1 << 5)) == "defrosting"
+    # Non-zero compressor frequency alone is enough.
+    assert action(0, compressor_frequency=40) == "heating"
+    # Fan alone.
+    assert action(0, fan_speed=300) == "fan"
+    # Really stopped.
+    assert action(0, compressor_frequency=0, fan_speed=0) == "off"
+    # Unchanged when started.
+    assert action(1 << 8, 40, 300) == "idle"
+
+
+def test_active_while_stopped_only_when_start_stop_is_zero() -> None:
+    api_module = _load_api_module()
+    active = api_module.ElyoTouchApi._active_while_stopped
+
+    assert active(1 << 6) is True
+    assert active(0, 25) is True
+    assert active(0, 0) is False
+    assert active((1 << 8) | (1 << 6), 30) is False
+
+
+def _api_with_status(api_module, status: int, frequency: int):
+    api = api_module.ElyoTouchApi("127.0.0.1", 502, 5, 10, 9)
+    writes: list[tuple[int, bool]] = []
+
+    async def read_input(address: int, count: int) -> list[int]:
+        if address == api_module.IR_STATUS:
+            return [status]
+        if address == api_module.IR_COMPRESSOR_FREQUENCY:
+            return [frequency]
+        raise AssertionError(address)
+
+    async def write_coil(address: int, value: bool) -> None:
+        writes.append((address, value))
+
+    api._ir = read_input
+    api._write_coil = write_coil
+    return api, writes
+
+
+def test_force_stop_pulses_start_when_compressor_runs_while_stopped() -> None:
+    api_module = _load_api_module()
+    api, writes = _api_with_status(api_module, 1 << 6, 40)
+
+    assert asyncio.run(api.async_force_stop(pulse_seconds=0)) is True
+    assert writes == [
+        (api_module.COIL_POWER, True),
+        (api_module.COIL_POWER, False),
+    ]
+
+
+def test_force_stop_is_a_plain_stop_when_really_stopped_or_running() -> None:
+    api_module = _load_api_module()
+
+    api, writes = _api_with_status(api_module, 0, 0)
+    assert asyncio.run(api.async_force_stop(pulse_seconds=0)) is False
+    assert writes == [(api_module.COIL_POWER, False)]
+
+    api, writes = _api_with_status(api_module, (1 << 8) | (1 << 6), 40)
+    assert asyncio.run(api.async_force_stop(pulse_seconds=0)) is False
+    assert writes == [(api_module.COIL_POWER, False)]

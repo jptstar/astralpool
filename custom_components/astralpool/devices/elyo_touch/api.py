@@ -1,6 +1,7 @@
 """Async Modbus TCP API for AstralPool Pro Elyo Touch."""
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
@@ -44,6 +45,7 @@ from .const import (
     IR_INLET_TEMPERATURE,
     IR_OUTLET_TEMPERATURE,
     IR_STATUS,
+    STOP_PULSE_SECONDS,
 )
 
 
@@ -211,16 +213,48 @@ class ElyoTouchApi:
         }.get((status_word >> 9) & 0b111)
 
     @staticmethod
-    def _hvac_action(status_word: int) -> str:
+    def _active_while_stopped(
+        status_word: int, compressor_frequency: int = 0
+    ) -> bool:
+        """Return True when the compressor runs although Start/Stop reads stopped.
+
+        The unit's own antifreeze protection can run the compressor with the
+        Start/Stop bit (bit 8) at 0; the Control Word then says "off" while the
+        machine draws power.
+        """
+        if status_word & (1 << 8):
+            return False
+        return bool(status_word & (1 << 6)) or compressor_frequency > 0
+
+    @staticmethod
+    def _hvac_action(
+        status_word: int,
+        compressor_frequency: int = 0,
+        fan_speed: int = 0,
+    ) -> str:
         """Return the real operating action from physical status bits.
 
         bit 8: heat-pump Stop/Start
         bit 5: defrost
         bit 6: compressor OFF/ON
         bit 4: four-way valve Heating/Cooling
+
+        When Start/Stop reads stopped but the compressor (bit 6 or a non-zero
+        frequency) or the fan is actually moving, the action reports what the
+        machine physically does instead of "off".
         """
         running = bool(status_word & (1 << 8))
         if not running:
+            if ElyoTouchApi._active_while_stopped(
+                status_word, compressor_frequency
+            ):
+                if status_word & (1 << 5):
+                    return "defrosting"
+                if status_word & (1 << 4):
+                    return "cooling"
+                return "heating"
+            if fan_speed > 0:
+                return "fan"
             return "off"
         if status_word & (1 << 5):
             return "defrosting"
@@ -249,6 +283,24 @@ class ElyoTouchApi:
     async def async_set_power(self, enabled: bool) -> None:
         """Start or stop the heat pump through Control Word bit 8."""
         await self._write_coil(COIL_POWER, enabled)
+
+    async def async_force_stop(self, pulse_seconds: float = STOP_PULSE_SECONDS) -> bool:
+        """Stop the heat pump, also when it runs while Start/Stop reads stopped.
+
+        Writing Stop when bit 8 is already 0 changes nothing, so a compressor
+        started by the unit's own antifreeze protection keeps running. In that
+        case assert Start briefly (keeping the selected mode), then Stop again.
+        Returns True when the Start/Stop pulse was needed.
+        """
+        status = (await self._ir(IR_STATUS, 1))[0]
+        frequency = (await self._ir(IR_COMPRESSOR_FREQUENCY, 1))[0]
+        if not self._active_while_stopped(status, frequency):
+            await self.async_set_power(False)
+            return False
+        await self._write_coil(COIL_POWER, True)
+        await asyncio.sleep(pulse_seconds)
+        await self._write_coil(COIL_POWER, False)
+        return True
 
     async def async_set_hvac_mode(self, mode: str) -> None:
         """Set Cool/Heat/Auto through the documented bit-addressable coils."""
@@ -388,7 +440,15 @@ class ElyoTouchApi:
             "selected_preset_mode": selected_preset_mode,
             "preset_mode": selected_preset_mode,
             "active_preset_mode": active_preset_mode,
-            "hvac_action": self._hvac_action(status),
+            "hvac_action": self._hvac_action(
+                status,
+                technical[IR_COMPRESSOR_FREQUENCY - IR_EXPANSION_VALVE_STEP],
+                technical[IR_FAN_SPEED - IR_EXPANSION_VALVE_STEP],
+            ),
+            "running_while_off": self._active_while_stopped(
+                status,
+                technical[IR_COMPRESSOR_FREQUENCY - IR_EXPANSION_VALVE_STEP],
+            ),
         }
 
         for index, key in enumerate(ALARM_KEYS):

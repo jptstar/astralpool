@@ -102,7 +102,10 @@ class ElyoTouchClimate(ElyoTouchEntity, ClimateEntity):
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set the HVAC mode."""
-        await self.coordinator.api.async_set_hvac_mode(hvac_mode)
+        if hvac_mode == HVACMode.OFF:
+            await self.coordinator.api.async_force_stop()
+        else:
+            await self.coordinator.api.async_set_hvac_mode(hvac_mode)
         await self.coordinator.async_request_refresh()
 
     async def async_set_preset_mode(self, preset_mode):
@@ -120,5 +123,5 @@ class ElyoTouchClimate(ElyoTouchEntity, ClimateEntity):
 
     async def async_turn_off(self):
         """Stop the heat pump while preserving its selected HVAC mode."""
-        await self.coordinator.api.async_set_power(False)
+        await self.coordinator.api.async_force_stop()
         await self.coordinator.async_request_refresh()

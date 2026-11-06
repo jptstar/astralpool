@@ -44,6 +44,10 @@ COIL_PRESET_BIT9: Final = 0x219
 COIL_PRESET_BIT10: Final = 0x21A
 COIL_PRESET_BIT11: Final = 0x21B
 
+# Seconds the Start/Stop coil is held on to stop a compressor that runs while
+# Start/Stop reads stopped. Not yet validated on hardware.
+STOP_PULSE_SECONDS: Final = 5.0
+
 IR_STATUS: Final = 0x00
 IR_ALARMS_1: Final = 0x01
 IR_AMBIENT_TEMPERATURE: Final = 0x07
